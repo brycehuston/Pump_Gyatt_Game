@@ -23,6 +23,7 @@
   .stat span:last-child{display:block;font-size:18px;margin-top:2px}
   #gameWrap{position:relative;aspect-ratio:16/9;width:100%;max-height:85svh;overflow:hidden;touch-action:none;cursor:none;perspective:900px;border-radius:12px}
   #game{width:100%;height:100%;display:block;background:#0b0b12}
+  #gl3d{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
   #gun{position:absolute;left:50%;top:100%;width:200px;opacity:.95;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6));user-select:none;display:none;transform:translate(-50%,-100%);transform-origin:50% 100%}
   #overlay,#startOverlay{position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:radial-gradient(60% 50% at 50% 45%, rgba(0,0,0,.05), rgba(0,0,0,.85) 60%, rgba(0,0,0,.95)); z-index:5}
   .over-box{ text-align:center; padding:28px 24px; border-radius:16px; background:rgba(20,10,25,.55); border:1px solid rgba(255,255,255,.1); backdrop-filter: blur(4px); width:min(680px,92%); box-shadow:0 10px 40px rgba(0,0,0,.6), inset 0 0 60px rgba(255,90,0,.08)}
@@ -61,11 +62,12 @@
     <div class="row" style="align-items:flex-start; gap:14px">
       <div id="gameWrap" class="card" style="flex:1 1 900px">
         <canvas id="game"></canvas>
+        <canvas id="gl3d"></canvas>
 
         <div id="startOverlay">
           <div class="over-box">
             <div class="over-title">PUMP GYATT</div>
-            <div class="over-sub">Tap pumpkins. Pumpkin butt = bonus. One glowing target at a time. Avoid bats. Ghosts are +5.</div>
+            <div class="over-sub">Tap the pumpkins. Pumpkin butt = bonus. One glowing target at a time. Avoid bats. Ghosts are +5.</div>
             <div style="margin:10px 0 18px;opacity:.85">60s • Frenzy at 30s • 2 bosses min • Sprinter once • Mobile friendly</div>
             <div class="over-actions">
               <button id="bigPlay" class="over-btn primary bigPlay">▶ Play</button>
@@ -87,7 +89,7 @@
           </div>
         </div>
 
-        <img id="gun" alt="bb-gun" draggable="false" src="gun.png">
+        <img id="gun" alt="bb-gun" draggable="false" src="js/gun.png">
       </div>
 
       <div style="width:360px" class="grid">
@@ -131,14 +133,14 @@
     </div>
   </div>
 
-<audio id="bgm" src="game_music.mp3" preload="auto" loop playsinline webkit-playsinline></audio>
-<audio id="roarAudio" src="roar.mp3" preload="auto" playsinline webkit-playsinline></audio>
-
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script src="./js/scene3d.js"></script>
 <script>
 'use strict';
 
 const cvs=document.getElementById('game'), ctx=cvs.getContext('2d');
 const wrap=document.getElementById('gameWrap');
+const gl3d=document.getElementById('gl3d');
 const startOverlay=document.getElementById('startOverlay');
 const bigPlay=document.getElementById('bigPlay');
 const muteStart=document.getElementById('muteStart');
@@ -163,39 +165,26 @@ const muteChk=document.getElementById('muteChk');
 const walletBox=document.getElementById('walletBox');
 const missionBox=document.getElementById('missionBox');
 const resetMissionBtn=document.getElementById('resetMission');
-const bgm=document.getElementById('bgm');
-const roarEl=document.getElementById('roarAudio');
+
+const Scene3D = window.Scene3D.init(gl3d, wrap);
 
 let W=0,H=0,dpr=1;
-function fit(){const r=wrap.getBoundingClientRect(); dpr=window.devicePixelRatio||1; W=r.width; H=r.height; cvs.width=W*dpr; cvs.height=H*dpr; cvs.style.width=W+'px'; cvs.style.height=H+'px'; ctx.setTransform(dpr,0,0,dpr,0,0); buildStars() }
+function fit(){const r=wrap.getBoundingClientRect(); dpr=window.devicePixelRatio||1; W=r.width; H=r.height; cvs.width=W*dpr; cvs.height=H*dpr; cvs.style.width=W+'px'; cvs.style.height=H+'px'; ctx.setTransform(dpr,0,0,dpr,0,0); buildStars(); window.Scene3D.resize() }
 addEventListener('resize',fit);
 
-const zombieImg=new Image(); zombieImg.src="zombie.png";
-const bossImg=new Image(); bossImg.src="monster-zombie.png";
-const batImg=new Image(); batImg.src="bat.png";
-const ghostImg=new Image(); ghostImg.src="ghost.png";
-const sprinterImg=new Image(); sprinterImg.src="glowing-pumpk.png";
-const scareImg=new Image(); scareImg.src="monster-face.png";
+const zombieImg=new Image(); zombieImg.src="js/zombie.png";
+const bossImg=new Image(); bossImg.src="js/monster-zombie.png";
+const batImg=new Image(); batImg.src="js/bat.png";
+const ghostImg=new Image(); ghostImg.src="js/ghost.png";
+const sprinterImg=new Image(); sprinterImg.src="js/glowing-pumpk.png";
 
 const isCoarse = matchMedia && matchMedia('(pointer: coarse)').matches;
 const MOBILE = { assist: isCoarse ? 56 : 0, hitScale: isCoarse ? 1.28 : 1, speedMul: isCoarse ? 0.85 : 1, spawnIntMul: isCoarse ? 1.15 : 1, sprinterSpeedMul: isCoarse ? 0.9 : 1 };
 
-const pops=[], floats=[], confetti=[];
-let rankFx=0, rankText="", comboFlame=0;
+const pops=[], floats=[]; let rankFx=0, rankText="", comboFlame=0;
 function spawnPop(x,y){ for(let i=0;i<9;i++) pops.push({x,y,vx:(Math.random()*2-1)*2.0,vy:(Math.random()*2-1)*1.8-0.5,r:2+Math.random()*2,life:220,t:0,h:28+Math.random()*10}) }
-function spawnConfetti(x,y,c=22){ for(let i=0;i<c;i++){ confetti.push({x,y,vx:(Math.random()*2-1)*3.2,vy:-2.2-Math.random()*3.4,ay:0.12,rot:Math.random()*6.28,vr:(Math.random()*0.5-0.25),size:2+Math.random()*3.5,life:900+Math.random()*700,t:0,h:Math.floor(Math.random()*360)}) } }
-function spawnGoldConfetti(x,y,c=50){ for(let i=0;i<c;i++){ const hue=45+Math.random()*15; confetti.push({x,y,vx:(Math.random()*2-1)*3.6,vy:-2.6-Math.random()*3.8,ay:0.12,rot:Math.random()*6.28,vr:(Math.random()*0.6-0.3),size:2.2+Math.random()*4.2,life:1000+Math.random()*900,t:0,h:hue}) } }
 function addFloat(text,x,y,fill='rgb(255,230,120)',lifeMs=1400){ if(!Number.isFinite(x)||!Number.isFinite(y)) return; floats.push({text,x,y,vy:-0.22,life:lifeMs,t:0,fill}) }
-function updateFx(dt){
-  for(const p of pops){ p.t+=dt; p.x+=p.vx; p.y+=p.vy; p.vy+=0.018 }
-  for(let i=pops.length-1;i>=0;i--) if(pops[i].t>pops[i].life) pops.splice(i,1);
-  for(const fl of floats){ fl.t+=dt; fl.y+=fl.vy }
-  for(let i=floats.length-1;i>=0;i--) if(floats[i].t>floats[i].life) floats.splice(i,1);
-  for(const cf of confetti){ cf.t+=dt; cf.vy+=cf.ay; cf.x+=cf.vx; cf.y+=cf.vy; cf.rot+=cf.vr }
-  for(let i=confetti.length-1;i>=0;i--){ const cf=confetti[i]; if(cf.t>cf.life || cf.y>H-40) confetti.splice(i,1) }
-  if(rankFx>0) rankFx=Math.max(0,rankFx-dt);
-  if(comboFlame>0) comboFlame=Math.max(0,comboFlame-dt*0.8)
-}
+function updateFx(dt){ for(const p of pops){ p.t+=dt; p.x+=p.vx; p.y+=p.vy; p.vy+=0.018 } for(let i=pops.length-1;i>=0;i--) if(pops[i].t>pops[i].life) pops.splice(i,1); for(const fl of floats){ fl.t+=dt; fl.y+=fl.vy } for(let i=floats.length-1;i>=0;i--) if(floats[i].t>floats[i].life) floats.splice(i,1); if(rankFx>0) rankFx=Math.max(0,rankFx-dt); if(comboFlame>0) comboFlame=Math.max(0,comboFlame-dt*0.8) }
 
 let parX=0, parY=0, stars=[];
 wrap.addEventListener('pointermove',e=>{ const r=wrap.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width; const y=(e.clientY-r.top)/r.height; parX=x-0.5; parY=y-0.5 });
@@ -252,7 +241,7 @@ function drawChar(t){
     ctx.strokeStyle='#000'; ctx.strokeRect(t.x-50,t.y-t.h-18,100,10);
   }
 }
-function drawBat(t){ const s=(performance.now()-t.animStart)/1000; const flap=1+0.15*Math.sin(s*10); const bob=4*Math.sin(s*3); ctx.save(); ctx.translate(t.x,t.y+bob); ctx.scale(t.flip?-1:1,flap); if(batImg.complete) ctx.drawImage(batImg,-t.w/2,-t.h/2,t.w,t.h); ctx.restore() }
+function drawBat2D(t){ const s=(performance.now()-t.animStart)/1000; const flap=1+0.15*Math.sin(s*10); const bob=4*Math.sin(s*3); ctx.save(); ctx.translate(t.x,t.y+bob); ctx.scale(t.flip?-1:1,flap); if(batImg.complete) ctx.drawImage(batImg,-t.w/2,-t.h/2,t.w,t.h); ctx.restore() }
 function drawGhost(t){ const s=(performance.now()-t.animStart)/1000; const bob=6*Math.sin(s*2+t.seed); const fade=0.6+0.4*Math.sin(s*3+t.seed); ctx.save(); ctx.globalAlpha=0.6+0.4*fade; if(ghostImg.complete){ ctx.translate(t.x,t.y+bob); ctx.drawImage(ghostImg,-t.w/2,-t.h/2,t.w,t.h) } ctx.restore() }
 
 let game=null;
@@ -266,19 +255,26 @@ function renderMission(){ const m=loadMission(); missionBox.textContent = m.done
 resetMissionBtn.onclick=()=>{ try{ localStorage.removeItem('pk_mission') }catch{} renderMission() }
 
 function rand(a,b){ return a + Math.random()*(b-a) }
-function clamp(v,a,b){ return Math.max(a,Math.min(b,v)) }
 function scheduleSecondScare(firstAtMs){
-  const shortDelay = 6500 + Math.random()*8500;
-  const longDelay = 18000 + Math.random()*16000;
-  const useShort = Math.random() < 0.75;
+  const shortDelay = 8000 + Math.random()*8000;
+  const longDelay = 22000 + Math.random()*14000;
+  const useShort = Math.random() < 0.7;
   return firstAtMs + (useShort ? shortDelay : longDelay);
 }
 function pickHoldMs(){
   const r=Math.random();
-  if(r<0.25) return rand(900,1400);
-  if(r<0.60) return rand(1400,2400);
-  if(r<0.85) return rand(2400,3600);
-  return rand(3600,4800);
+  if(r<0.25) return rand(1000,1600);
+  if(r<0.60) return rand(1600,2600);
+  if(r<0.85) return rand(2600,3800);
+  return rand(3800,5200);
+}
+function pickProximity(last){
+  const opts=['far','mid','close'];
+  const weights={far:1,mid:1,close:1.2};
+  if(last){ weights[last]*=0.35 }
+  const bag=[];
+  for(const k of opts){ const n=Math.round(weights[k]*10); for(let i=0;i<n;i++) bag.push(k) }
+  return bag[Math.floor(Math.random()*bag.length)]
 }
 
 function newGame(){
@@ -294,9 +290,9 @@ function newGame(){
     telegraphed:false, telegraphTimer:0,
     rank:"Rookie", firstWave:false, glowEnabledAt:5000, specialSpawned:false,
     heat:0, jammed:false, jamUntil:0,
-    scarePlan:[12000+Math.random()*9000],
+    scarePlan:[18000+Math.random()*15000],
     scareIndex:0,
-    scare:{active:false, phase:"idle", alpha:0, hold:0, holdTarget:0, reveal:0, revealMs:820, fadeInMs:140, fadeOutMs:460, done:false, cfg:null, flash:0, cur:null}
+    scare:{active:false, phase:"idle", alpha:0, hold:0, holdTarget:0, reveal:0, revealMs:900, fadeInMs:220, fadeOutMs:420, done:false, prox:'mid', lastProx:null}
   }
 }
 
@@ -315,7 +311,9 @@ function spawnZombie(g){
   const bodyR=26*scale*HITBOX_SCALE*MOBILE.hitScale, pumpR=24*scale*HITBOX_SCALE*MOBILE.hitScale;
   const pumpOffsetX=-20*scale, pumpOffsetY=-60*scale;
   const z={id:rid(),kind:'zombie',x,y,vx:fromLeft?speed:-speed,vy:0,dead:false,flip:!fromLeft,w,h,bodyR,pumpR,pumpOffsetX,pumpOffsetY,animStart:performance.now(),seed:Math.random()*Math.PI*2,stepAmp:6*scale,bobAmp:3*scale,swayAmp:0.06,squashAmp:0.04,canSwap:true,hp:1,glow:false};
-  g.targets.push(z); g.firstWave=true
+  g.targets.push(z);
+  z._3d = window.Scene3D.addZombie(z);
+  g.firstWave=true
 }
 function spawnBoss(g){
   if(!g.firstWave) return;
@@ -331,6 +329,7 @@ function spawnBoss(g){
   const pumpOffsetX=-30*scale, pumpOffsetY=-78*scale;
   const boss={id:rid(),kind:'boss',x,y,vx,vy:0,dead:false,flip:!fromLeft,w,h,bodyR,pumpR,pumpOffsetX,pumpOffsetY,animStart:performance.now(),seed:Math.random()*Math.PI*2,stepAmp:7*scale,bobAmp:4*scale,swayAmp:0.05,squashAmp:0.03,hp:6,glow:false};
   g.targets.push(boss);
+  boss._3d = window.Scene3D.addGiant(boss);
   g.bossIntro={id:boss.id, t:performance.now()};
   g.timescale=0.35;
   roarSound(2.2);
@@ -338,60 +337,32 @@ function spawnBoss(g){
   g.nextBossAt = (g.bossCount<g.bossTarget) ? g.t + 16000 + Math.random()*6000 : Infinity;
   g.telegraphed=false;
 }
-function spawnBat(g){ if(g.targets.length>=g.maxTargets) return; const y=floorY()-120-Math.random()*110; const fromLeft=Math.random()<0.5; const x=fromLeft?-40:W+40; const vx=(fromLeft?(0.18+Math.random()*0.05):-(0.18+Math.random()*0.05))*MOBILE.speedMul; const w=110,h=60; const r=Math.min(w,h)*0.45*MOBILE.hitScale; g.targets.push({id:rid(),kind:'bat',x,y,vx,vy:0,dead:false,animStart:performance.now(),r,flip:!fromLeft,w,h}) }
+function spawnBat(g){ if(g.targets.length>=g.maxTargets) return; const y=floorY()-120-Math.random()*110; const fromLeft=Math.random()<0.5; const x=fromLeft?-40:W+40; const vx=(fromLeft?(0.18+Math.random()*0.05):-(0.18+Math.random()*0.05))*MOBILE.speedMul; const w=110,h=60; const r=Math.min(w,h)*0.45*MOBILE.hitScale; const t={id:rid(),kind:'bat',x,y,vx,vy:0,dead:false,animStart:performance.now(),r,flip:!fromLeft,w,h}; g.targets.push(t); t._3d = window.Scene3D.addBat(t) }
 function spawnGhost(g){ if(g.targets.length>=g.maxTargets) return; const y=floorY()-100-Math.random()*120; const fromLeft=Math.random()<0.5; const x=fromLeft?-60:W+60; const vx=(fromLeft?(0.08+Math.random()*0.04):-(0.08+Math.random()*0.04))*MOBILE.speedMul; const w=120,h=100; const r=42*MOBILE.hitScale; g.targets.push({id:rid(),kind:'ghost',x,y,vx,vy:0,dead:false,animStart:performance.now(),r,flip:!fromLeft,w,h,seed:Math.random()*6.28}) }
-function spawnSprinter(g){
-  if(g.specialSpawned || g.targets.length>=g.maxTargets) return;
-  g.specialSpawned=true;
-  const L=lanes3().slice(0,2);
-  const y=L[Math.floor(Math.random()*L.length)];
-  const fromLeft=Math.random()<0.5; const x=fromLeft?-80:W+80;
-  const vx=(fromLeft?0.75:-0.75)*MOBILE.sprinterSpeedMul;
-  const scale=1.05;
-  const w=150*scale, h=210*scale;
-  const bodyR=28*scale*HITBOX_SCALE*MOBILE.hitScale, pumpR=26*scale*HITBOX_SCALE*MOBILE.hitScale;
-  const pumpOffsetX=-22*scale, pumpOffsetY=-62*scale;
-  const t={id:rid(),kind:'sprinter',x,y,vx,vy:0,dead:false,flip:!fromLeft,w,h,bodyR,pumpR,pumpOffsetX,pumpOffsetY,animStart:performance.now(),seed:Math.random()*Math.PI*2,stepAmp:7*scale,bobAmp:5*scale,swayAmp:0.06,squashAmp:0.05,hp:1,glow:true,ttl:3500,spawnedAt:performance.now()};
-  g.targets.push(t)
-}
-function rid(){ return Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2) }
+function spawnSprinter(g){ if(g.specialSpawned || g.targets.length>=g.maxTargets) return; g.specialSpawned=true; const L=lanes3().slice(0,2); const y=L[Math.floor(Math.random()*L.length)]; const fromLeft=Math.random()<0.5; const x=fromLeft?-80:W+80; const vx=(fromLeft?0.75:-0.75)*MOBILE.sprinterSpeedMul; const scale=1.05; const w=150*scale, h=210*scale; const bodyR=28*scale*HITBOX_SCALE*MOBILE.hitScale, pumpR=26*scale*HITBOX_SCALE*MOBILE.hitScale; const pumpOffsetX=-22*scale, pumpOffsetY=-62*scale; const t={id:rid(),kind:'sprinter',x,y,vx,vy:0,dead:false,flip:!fromLeft,w,h,bodyR,pumpR,pumpOffsetX,pumpOffsetY,animStart:performance.now(),seed:Math.random()*Math.PI*2,stepAmp:7*scale,bobAmp:5*scale,swayAmp:0.06,squashAmp:0.05,hp:1,glow:true,ttl:3500,spawnedAt:performance.now()}; g.targets.push(t); t._3d = window.Scene3D.addZombie(t) }
 
-function faceCropNear(){
-  const base={sx:0.14,sy:0.06,sw:0.72,sh:0.60};
-  const jx=(Math.random()*0.12-0.06), jy=(Math.random()*0.08-0.04);
-  const sx=clamp(base.sx+jx,0,1-0.4);
-  const sy=clamp(base.sy/jy?base.sy+jy:base.sy,0,1-0.4);
-  return {sx,sy,sw:base.sw,sh:base.sh}
-}
-function planScarePlacement(){
-  const near = Math.random() < 0.98;
-  const crop = near ? faceCropNear() : {sx:0,sy:0,sw:1,sh:1};
-  const aspect = (scareImg.naturalHeight||512)/(scareImg.naturalWidth||512) * (crop.sh/crop.sw);
-  const baseH = near ? H*2.8 : rand(H*0.5,H*0.9);
-  const dh = baseH;
-  const dw = dh/aspect;
-  const overflowX = Math.max(0,dw-W);
-  const overflowY = Math.max(0,dh-H);
-  const centerDx = (W-dw)/2;
-  const centerDy = (H-dh)/2;
-  const jitterX = near ? rand(-overflowX*0.6, overflowX*0.6) : rand(-20,20);
-  const jitterY = near ? rand(-overflowY*0.6, overflowY*0.6) : rand(-20,20);
-  return {dx:centerDx+jitterX,dy:centerDy+jitterY,dw,dh,near,crop}
-}
+function rid(){ return Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2) }
 
 function updateScare(g,dte){
   if(g.scareIndex<g.scarePlan.length && g.t>=g.scarePlan[g.scareIndex] && !g.scare.active){
-    g.scare={active:true, phase:'darken', alpha:0, hold:0, holdTarget:pickHoldMs(), reveal:0, revealMs:720, fadeInMs:120, fadeOutMs:460, done:false, cfg:planScarePlacement(), flash:0, cur:null};
-    if(g.scareIndex===0){ g.scarePlan.push(scheduleSecondScare(g.scarePlan[0])); g.scarePlan.push(scheduleSecondScare(g.scarePlan[0])+rand(7000,12000)) }
+    const prox=pickProximity(g.scare.lastProx);
+    g.scare={
+      active:true, phase:'darken', alpha:0, hold:0,
+      holdTarget:pickHoldMs(),
+      reveal:0, revealMs:rand(800,1100),
+      fadeInMs:rand(160,300),
+      fadeOutMs:rand(260,540),
+      done:false, prox, lastProx:prox
+    };
+    if(g.scareIndex===0){ g.scarePlan.push(scheduleSecondScare(g.scarePlan[0])) }
     g.scareIndex++;
   }
   const s=g.scare;
   if(!s.active) return;
   if(s.phase==='darken'){ s.alpha=Math.min(1,s.alpha+dte/Math.max(1,s.fadeInMs)); if(s.alpha>=1){ s.phase='dark'; s.hold=0 } }
-  else if(s.phase==='dark'){ s.hold+=dte; if(s.hold>=s.holdTarget){ s.phase='reveal'; s.reveal=0; s.flash=240; roarSound(3.4); g.shakeTime=1200; g.shakeMag=22 } }
-  else if(s.phase==='reveal'){ s.reveal+=dte; if(s.reveal>Math.max(240,s.revealMs)){ s.phase='lighten' } }
-  else if(s.phase==='lighten'){ s.alpha=Math.max(0,s.alpha-dte/Math.max(1,s.fadeOutMs)); if(s.alpha<=0){ s.active=false; s.phase='idle'; s.done=true; s.cfg=null; s.flash=0; s.cur=null } }
-  if(s.flash>0){ s.flash=Math.max(0,s.flash-dte) }
+  else if(s.phase==='dark'){ s.hold+=dte; if(s.hold>=s.holdTarget){ s.phase='reveal'; s.reveal=0; roarSound(2.4); g.shakeTime=900; g.shakeMag=8 } }
+  else if(s.phase==='reveal'){ s.reveal+=dte; if(s.reveal>Math.max(200,s.revealMs)){ s.phase='lighten' } }
+  else if(s.phase==='lighten'){ s.alpha=Math.max(0,s.alpha-dte/Math.max(1,s.fadeOutMs)); if(s.alpha<=0){ s.active=false; s.phase='idle'; s.done=true } }
 }
 
 function startBlackout(g){
@@ -429,9 +400,14 @@ function update(dt,g){
     if((t.kind==='zombie'||t.kind==='boss'||t.kind==='sprinter') && t.canSwap && Math.random()<0.0015){
       const L=lanes3(); t.y=L[Math.floor(Math.random()*L.length)]; t.canSwap=false
     }
-    if(t.x<-200||t.x>W+200||t.y<-160||t.y>H+160) t.dead=true
   }
-  g.targets=g.targets.filter(z=>!z.dead);
+  for(let i=g.targets.length-1;i>=0;i--){
+    const t=g.targets[i]
+    if(t.x<-200||t.x>W+200||t.y<-160||t.y>H+160||t.dead){
+      if(t._3d){ window.Scene3D.remove(t.id) }
+      g.targets.splice(i,1)
+    }
+  }
   if(g.shakeTime>0){ g.shakeTime-=dte; if(g.shakeTime<=0) g.shakeMag=0 }
   if(g.lastHitTime && performance.now()-g.lastHitTime>2000){ g.combo=0; g.lastHitTime=0; comboFlame=0 }
   if(g.glowId && !g.targets.some(t=>t.id===g.glowId)){ clearGlow(g) }
@@ -442,93 +418,75 @@ function update(dt,g){
   drawHUD(g);
 }
 
-let scareDraw=null;
-const EYE_FULL_L={x:0.37,y:0.34};
-const EYE_FULL_R={x:0.63,y:0.34};
-
 function render(g){
   const sx=g.shakeMag?(Math.random()-0.5)*g.shakeMag:0, sy=g.shakeMag?(Math.random()-0.5)*g.shakeMag:0;
   ctx.save(); ctx.translate(sx,sy);
   drawBackground();
-  for(const t of g.targets){ if(t.kind==='zombie'||t.kind==='boss'||t.kind==='sprinter') drawChar(t); else if(t.kind==='bat') drawBat(t); else if(t.kind==='ghost') drawGhost(t) }
-  if(g.blackoutMs>0){ ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillRect(0,0,W,H); g.targets.forEach(t=>{ if(t.glow) drawChar(t) }) }
+  for(const t of g.targets){
+    if(t.kind==='ghost'){ drawGhost(t) }
+    else if(t.kind==='bat'){ if(!t._3d) drawBat2D(t) }
+    else { if(!t._3d) drawChar(t) }
+  }
+  if(g.blackoutMs>0){ ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillRect(0,0,W,H); g.targets.forEach(t=>{ if(t.glow) { if(!t._3d) drawChar(t) } }) }
   if(g.scare.active){
     const s=g.scare;
     if(s.phase!=='reveal'){ ctx.fillStyle=`rgba(0,0,0,${s.alpha})`; ctx.fillRect(0,0,W,H) }
     if(s.phase==='reveal'){
       ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
-      if(scareImg.complete && s.cfg){
-        const prog=Math.min(1,s.reveal/Math.max(1,s.revealMs));
-        const impact = Math.max(0,1 - s.reveal/220);
-        const zoomBoost = 1 + impact*0.18;
-        const shake=24*(0.7+Math.random()*0.5);
-        const dw=s.cfg.dw*zoomBoost, dh=s.cfg.dh*zoomBoost;
-        const dx=s.cfg.dx + (s.cfg.dw-dw)/2 + (Math.random()-0.5)*shake;
-        const dy=s.cfg.dy + (s.cfg.dh-dh)/2 + (Math.random()-0.5)*shake;
-        const iw=scareImg.naturalWidth||512, ih=scareImg.naturalHeight||512;
-        const sx0=s.cfg.crop.sx*iw, sy0=s.cfg.crop.sy*ih, sw0=s.cfg.crop.sw*iw, sh0=s.cfg.crop.sh*ih;
-        ctx.drawImage(scareImg, sx0, sy0, sw0, sh0, dx, dy, dw, dh);
-        scareDraw={dx,dy,dw,dh,crop:s.cfg.crop};
+      if(bossImg.complete){
+        if(s.prox==='far'){
+          const scale=H*1.05;
+          const aspect=(bossImg.height||512)/(bossImg.width||512);
+          const dw=scale, dh=scale*aspect;
+          const dx=(W-dw)/2 + (Math.random()-0.5)*8;
+          const dy=H*0.10 + (Math.random()-0.5)*6;
+          ctx.drawImage(bossImg, dx, dy, dw, dh);
+        }else if(s.prox==='mid'){
+          const iw=bossImg.naturalWidth||bossImg.width||512;
+          const ih=bossImg.naturalHeight||bossImg.height||512;
+          const sy0=Math.floor(ih*0.05);
+          const sh=Math.floor(ih*0.65);
+          const sx0=0, sw=iw;
+          const aspect=sh/sw;
+          const dh=H*1.3;
+          const dw=dh/aspect;
+          const dx=(W-dw)/2 + (Math.random()-0.5)*12;
+          const dy=H*0.00 + (Math.random()-0.5)*8;
+          ctx.drawImage(bossImg, sx0, sy0, sw, sh, dx, dy, dw, dh);
+        }else{
+          const iw=bossImg.naturalWidth||bossImg.width||512;
+          const ih=bossImg.naturalHeight||bossImg.height||512;
+          const sx0=0, sw=iw;
+          const sy0=Math.floor(ih*0.12);
+          const sh=Math.floor(ih*0.40);
+          const aspect=sh/sw;
+          const dh=H*1.9;
+          const dw=dh/aspect;
+          const shake=16*(0.6+Math.random()*0.4);
+          const dx=(W-dw)/2 + shake*(Math.random()-0.5);
+          const dy=H*0.02 + shake*(Math.random()-0.5);
+          ctx.drawImage(bossImg, sx0, sy0, sw, sh, dx, dy, dw, dh);
+        }
       }
       const vg=ctx.createRadialGradient(W/2, H*0.35, 30, W/2, H*0.35, Math.max(W,H)*0.6);
       vg.addColorStop(0,'rgba(0,0,0,0)');
       vg.addColorStop(1,'rgba(0,0,0,0.92)');
       ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
-      if(s.flash>0){ const a=Math.max(0, s.flash/240); ctx.fillStyle=`rgba(255,255,255,${0.9*a})`; ctx.fillRect(0,0,W,H) }
     }
   }
-  for(const cf of confetti){
-    const a=Math.max(0,1-(cf.t/cf.life));
-    ctx.save();
-    ctx.translate(cf.x,cf.y);
-    ctx.rotate(cf.rot);
-    ctx.fillStyle=`hsla(${cf.h},90%,60%,${a})`;
-    ctx.fillRect(-cf.size*0.5,-cf.size*0.5,cf.size,cf.size*1.6);
-    ctx.restore();
-  }
-  ctx.font='900 28px system-ui, Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  for(const f of floats){ const a=Math.max(0,1-(f.t/f.life)); ctx.save(); ctx.globalAlpha=a; ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=8; ctx.strokeStyle='rgba(0,0,0,0.85)'; ctx.lineWidth=4; ctx.strokeText(f.text,f.x,f.y); ctx.fillStyle=f.fill; ctx.fillText(f.text,f.x,f.y); ctx.restore() }
-  if(rankFx>0){ ctx.save(); const a=0.3+0.3*Math.sin(performance.now()/120); ctx.globalAlpha=a; ctx.fillStyle='#ffef9a'; ctx.font='900 48px system-ui, Arial'; ctx.textAlign='center'; ctx.fillText(rankText, W/2, 90); ctx.restore() }
-  drawCrosshair(); if(comboFlame>0){ const a=Math.min(1,comboFlame/600); const r=60+20*Math.sin(performance.now()/90); const g2=ctx.createRadialGradient(mouseX,mouseY,4,mouseX,mouseY,r); g2.addColorStop(0,`rgba(255,190,90,${0.45*a})`); g2.addColorStop(1,`rgba(255,90,0,0)`); ctx.fillStyle=g2; ctx.beginPath(); ctx.arc(mouseX,mouseY,r,0,Math.PI*2); ctx.fill() }
+  if(g.telegraphTimer>0){ const a = 0.25 + 0.25*Math.sin(performance.now()/100); ctx.fillStyle=`rgba(180,0,0,${a})`; ctx.fillRect(0,0,W,H); ctx.save(); ctx.fillStyle='#ff4a4a'; ctx.globalAlpha=0.9; ctx.font='900 56px system-ui, Arial'; ctx.textAlign='center'; ctx.fillText("BOSS INCOMING!", W/2, 110); ctx.restore() }
+  drawFXLayer(); drawCrosshair(); drawComboFlames();
   ctx.restore()
 }
+
+function drawFXLayer(){ ctx.font='900 28px system-ui, Arial'; ctx.textAlign='center'; ctx.textBaseline='middle'; for(const f of floats){ const a=Math.max(0,1-(f.t/f.life)); ctx.save(); ctx.globalAlpha=a; ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=8; ctx.strokeStyle='rgba(0,0,0,0.85)'; ctx.lineWidth=4; ctx.strokeText(f.text,f.x,f.y); ctx.fillStyle=f.fill; ctx.fillText(f.text,f.x,f.y); ctx.restore() } if(rankFx>0){ ctx.save(); const a=0.3+0.3*Math.sin(performance.now()/120); ctx.globalAlpha=a; ctx.fillStyle='#ffef9a'; ctx.font='900 48px system-ui, Arial'; ctx.textAlign='center'; ctx.fillText(rankText, W/2, 90); ctx.restore() } }
+function drawComboFlames(){ if(comboFlame<=0) return; const a=Math.min(1,comboFlame/600); const r=60+20*Math.sin(performance.now()/90); const g=ctx.createRadialGradient(mouseX,mouseY,4,mouseX,mouseY,r); g.addColorStop(0,`rgba(255,190,90,${0.45*a})`); g.addColorStop(1,`rgba(255,90,0,0)`); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(mouseX,mouseY,r,0,Math.PI*2); ctx.fill() }
 
 function shake(g,ms,mag){ g.shakeTime=ms; g.shakeMag=mag }
 
 let mouseX=0,mouseY=0;
 
-function eyeToScreen(draw,eye){
-  if(!draw) return {x:-9999,y:-9999};
-  const nx=(eye.x - draw.crop.sx)/draw.crop.sw;
-  const ny=(eye.y - draw.crop.sy)/draw.crop.sh;
-  return {x:draw.dx + nx*draw.dw, y:draw.dy + ny*draw.dh}
-}
-
-function shootScare(g,mx,my){
-  if(!g.scare.active || g.scare.phase!=='reveal' || !scareDraw) return;
-  const L=eyeToScreen(scareDraw,EYE_FULL_L);
-  const R=eyeToScreen(scareDraw,EYE_FULL_R);
-  const r=scareDraw.dw*0.06;
-  const dL=Math.hypot(mx-L.x,my-L.y);
-  const dR=Math.hypot(mx-R.x,my-R.y);
-  if(dL<=r || dR<=r){
-    const px=dL<=r?L.x:R.x, py=dL<=r?L.y:R.y;
-    const add=15*(game?game.mult:1);
-    game.score+=add;
-    spawnGoldConfetti(px,py,140);
-    addFloat("+"+add, px, py-20, "rgb(255,230,120)", 1400);
-    bigPopSound();
-    updateRank(game);
-    drawHUD(game);
-    g.scare.phase='lighten';
-    g.scare.alpha=1;
-  } else {
-    missSound();
-  }
-}
-
 function shootAt(g,mx,my){
-  if(g.scare.active && g.scare.phase==='reveal'){ shootScare(g,mx,my); return }
   if(g.jammed){ addFloat("JAMMED!", mx, my-18, "rgb(255,100,100)", 900); missSound(); return }
   let pick=null,best=9999,val=0, kind='none';
   let nearest={z:null,d:9999,info:null};
@@ -550,20 +508,21 @@ function shootAt(g,mx,my){
   }
   if(!pick){ miss(g,mx,my); postShot(g); return }
   if(kind==='bat'){ pick.z.dead=true; val=-2; addFloat("-2", pick.z.x, pick.z.y-24, "rgb(255,80,80)", 1200); badHitSound() }
-  else if(kind==='ghost'){ pick.z.dead=true; val=5*g.mult; spawnPop(pick.z.x,pick.z.y); spawnConfetti(pick.z.x,pick.z.y,18); addFloat("+5", pick.z.x, pick.z.y-20, "rgb(200,230,255)", 1200); hitSound("pumpGlow") }
+  else if(kind==='ghost'){ pick.z.dead=true; val=5*g.mult; spawnPop(pick.z.x,pick.z.y); addFloat("+5", pick.z.x, pick.z.y-20, "rgb(200,230,255)", 1200); hitSound("pumpGlow") }
   else{
     const z=pick.z; const glow=z.glow===true;
     if(z.kind==='boss'){
-      if(pick.pump){ val=(glow?12:4)*g.mult; spawnPop(pick.px,pick.py); spawnConfetti(pick.px,pick.py,28); addFloat("+"+val, pick.px, pick.py-16, glow?"rgb(120,220,255)":"rgb(255,230,120)", 1400); hitSound(glow?"pumpGlow":"pump") }
+      if(pick.pump){ val=(glow?12:4)*g.mult; spawnPop(pick.px,pick.py); addFloat("+"+val, pick.px, pick.py-16, glow?"rgb(120,220,255)":"rgb(255,230,120)", 1400); hitSound(glow?"pumpGlow":"pump") }
       else { val=2*g.mult; addFloat("+"+val, z.x, z.y-z.h*0.6, "rgb(255,200,120)", 1400); hitSound("body") }
       const before=z.hp||6; z.hp=before-1; if(before!==z.hp) lowRoar(1.1); if(z.hp<=0) z.dead=true;
       if(glow){ clearGlow(g); if(Math.random()<0.08){ g.timeLeft=Math.min(90,g.timeLeft+5); addFloat("+5s", z.x, z.y-90, "rgb(120,220,255)", 1400) } const m=loadMission(); if(!m.done){ m.hitGlow++; if(m.hitGlow>=m.goalGlow){ m.done=true; addFloat("MISSION!", W/2, H*0.3, "rgb(255,230,120)", 1500); rankUpSound() } saveMission(m) } }
     } else if(z.kind==='sprinter'){
-      if(pick.pump){ val = 25*g.mult; spawnPop(pick.px||z.x,pick.py||z.y); spawnGoldConfetti(pick.px||z.x,pick.py||z.y,70); bigPopSound() } else { val = 6*g.mult }
-      addFloat("+"+val, (pick.px||z.x), (pick.py||z.y)-16, "rgb(255,230,120)", 1400);
+      val = pick.pump ? 12*g.mult : 6*g.mult;
+      spawnPop(pick.px||z.x,pick.py||z.y);
+      addFloat("+"+val, (pick.px||z.x), (pick.py||z.y)-16, pick.pump?"rgb(120,220,255)":"rgb(255,230,120)", 1400);
       hitSound(pick.pump?"pumpGlow":"pump"); z.dead=true;
     } else {
-      if(pick.pump){ val=(glow?10:2)*g.mult; spawnPop(pick.px,pick.py); spawnConfetti(pick.px,pick.py,22); addFloat("+"+val, pick.px, pick.py-16, glow?"rgb(120,220,255)":"rgb(255,230,120)", 1400); hitSound(glow?"pumpGlow":"pump") }
+      if(pick.pump){ val=(glow?10:2)*g.mult; spawnPop(pick.px,pick.py); addFloat("+"+val, pick.px, pick.py-16, glow?"rgb(120,220,255)":"rgb(255,230,120)", 1400); hitSound(glow?"pumpGlow":"pump") }
       else { val=1*g.mult; addFloat("+"+val, z.x, z.y-z.h*0.6, "rgb(255,200,120)", 1400); hitSound("body") }
       z.hp=(z.hp||1)-1; if(z.hp<=0) z.dead=true;
       if(glow){ clearGlow(g); if(Math.random()<0.08){ g.timeLeft=Math.min(90,g.timeLeft+5); addFloat("+5s", z.x, z.y-70, "rgb(120,220,255)", 1400) } const m=loadMission(); if(!m.done){ m.hitGlow++; if(m.hitGlow>=m.goalGlow){ m.done=true; addFloat("MISSION!", W/2, H*0.3, "rgb(255,230,120)", 1500); rankUpSound() } saveMission(m) } }
@@ -590,56 +549,83 @@ function badHitSound(){ blip(240,160,0.07,0.09,"square") }
 function missSound(){ blip(180,110,0.08,0.09,"sawtooth") }
 function lowRoar(power=1){ blip(320*power,220*power,0.35,0.12,"sawtooth") }
 function rankUpSound(){ blip(440,880,0.22,0.16,"triangle") }
-function bigPopSound(){ blip(1600,260,0.11,0.35,"square"); blip(1200,320,0.14,0.25,"triangle") }
-function gameOverSound(){ blip(600,220,0.35,0.18,"sawtooth"); setTimeout(()=>blip(440,0,0.28,0.12,"triangle"),120) }
 
 let __roarIR=null;
-function makeRoarCurve(amount){ const n=44100, curve=new Float32Array(n), k=typeof amount==='number'?amount:36, deg=Math.PI/180; for(let i=0;i<n;i++){ const x=i*2/n-1; curve[i]=(3+k)*x*20*deg/(Math.PI+k*Math.abs(x)) } return curve }
-function makeRoarImpulse(ctx, seconds=0.22, decay=2.0){ const len=(seconds*ctx.sampleRate)|0, buf=ctx.createBuffer(2,len,ctx.sampleRate); for(let ch=0; ch<2; ch++){ const d=buf.getChannelData(ch); for(let i=0;i<len;i++){ const t=i/len; d[i]=(Math.random()*2-1)*Math.pow(1-t,decay) } } return buf }
-async function synthRoar(power=2){
+function makeRoarCurve(amount){
+  const n=44100, curve=new Float32Array(n), k=typeof amount==='number'?amount:36, deg=Math.PI/180;
+  for(let i=0;i<n;i++){ const x=i*2/n-1; curve[i]=(3+k)*x*20*deg/(Math.PI+k*Math.abs(x)) }
+  return curve
+}
+function makeRoarImpulse(ctx, seconds=0.22, decay=2.0){
+  const len=(seconds*ctx.sampleRate)|0, buf=ctx.createBuffer(2,len,ctx.sampleRate);
+  for(let ch=0; ch<2; ch++){
+    const d=buf.getChannelData(ch);
+    for(let i=0;i<len;i++){ const t=i/len; d[i]=(Math.random()*2-1)*Math.pow(1-t,decay) }
+  }
+  return buf
+}
+async function roarSound(power=2){
   if(muted) return;
   try{
-    ensureAudio(); if(!audioCtx) return;
+    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
     if(audioCtx.state==='suspended'){ try{ await audioCtx.resume() }catch{} }
     if(!__roarIR) __roarIR=makeRoarImpulse(audioCtx,0.25,2.2);
+
     const t0=audioCtx.currentTime, stopAt=t0+1.05;
+
     const out=audioCtx.createGain(); out.gain.value=Math.min(1,0.9*power);
     const pan=audioCtx.createStereoPanner(); pan.pan.value=(Math.random()*0.4-0.2);
-    const comp=audioCtx.createDynamicsCompressor(); comp.threshold.value=-16; comp.knee.value=14; comp.ratio.value=16; comp.attack.value=0.004; comp.release.value=0.18;
+    const comp=audioCtx.createDynamicsCompressor();
+    comp.threshold.value=-16; comp.knee.value=14; comp.ratio.value=16; comp.attack.value=0.004; comp.release.value=0.18;
+
     const env=audioCtx.createGain(); env.gain.value=0.0001;
     const shaper=audioCtx.createWaveShaper(); shaper.curve=makeRoarCurve(48);
+
     const dry=audioCtx.createGain(); dry.gain.value=0.7;
     const wet=audioCtx.createConvolver(); wet.buffer=__roarIR;
     const wetG=audioCtx.createGain(); wetG.gain.value=0.32;
+
     const noiseBuf=audioCtx.createBuffer(1,(1.2*audioCtx.sampleRate)|0,audioCtx.sampleRate);
-    const nb=noiseBuf.getChannelData(0); for(let i=0;i<nb.length;i++){ const t=i/nb.length; nb[i]=(Math.random()*2-1)*Math.pow(1-t,0.7) }
+    const nb=noiseBuf.getChannelData(0);
+    for(let i=0;i<nb.length;i++){ const t=i/nb.length; nb[i]=(Math.random()*2-1)*Math.pow(1-t,0.7) }
     const n=audioCtx.createBufferSource(); n.buffer=noiseBuf;
+
     const hp=audioCtx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=60; hp.Q.value=0.7;
     const shelf=audioCtx.createBiquadFilter(); shelf.type='lowshelf'; shelf.frequency.value=140; shelf.gain.value=10;
     const form1=audioCtx.createBiquadFilter(); form1.type='peaking'; form1.frequency.value=300; form1.Q.value=0.9; form1.gain.value=9;
     const form2=audioCtx.createBiquadFilter(); form2.type='peaking'; form2.frequency.value=520; form2.Q.value=1.0; form2.gain.value=5;
     const notch=audioCtx.createBiquadFilter(); notch.type='notch'; notch.frequency.value=2500; notch.Q.value=4;
     const lp=audioCtx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=1000; lp.Q.value=0.8;
-    const sub=audioCtx.createOscillator(); sub.type='sine'; sub.frequency.setValueAtTime(70,t0); sub.frequency.exponentialRampToValueAtTime(52,t0+0.55);
+
+    const sub=audioCtx.createOscillator(); sub.type='sine';
+    sub.frequency.setValueAtTime(70,t0);
+    sub.frequency.exponentialRampToValueAtTime(52,t0+0.55);
     const subG=audioCtx.createGain(); subG.gain.value=0.55*power;
-    const growl=audioCtx.createOscillator(); growl.type='sawtooth'; growl.frequency.setValueAtTime(140,t0); growl.frequency.exponentialRampToValueAtTime(90,t0+0.6);
+
+    const growl=audioCtx.createOscillator(); growl.type='sawtooth';
+    growl.frequency.setValueAtTime(140,t0);
+    growl.frequency.exponentialRampToValueAtTime(90,t0+0.6);
     const growlG=audioCtx.createGain(); growlG.gain.value=0.18*power;
-    const lfo=audioCtx.createOscillator(); lfo.type='triangle'; lfo.frequency.value=7; const lfoD=audioCtx.createGain(); lfoD.gain.value=0.25; lfo.connect(lfoD); lfoD.connect(subG.gain); lfoD.connect(form1.gain);
+
+    const lfo=audioCtx.createOscillator(); lfo.type='triangle'; lfo.frequency.value=7;
+    const lfoD=audioCtx.createGain(); lfoD.gain.value=0.25;
+    lfo.connect(lfoD); lfoD.connect(subG.gain); lfoD.connect(form1.gain);
+
     n.connect(hp); hp.connect(shelf); shelf.connect(form1); form1.connect(form2); form2.connect(notch); notch.connect(lp); lp.connect(shaper);
     sub.connect(subG); growl.connect(growlG);
     shaper.connect(env); subG.connect(env); growlG.connect(env);
-    const dryBus=audioCtx.createGain(); dryBus.gain.value=1;
-    env.connect(comp); comp.connect(dryBus); comp.connect(wet); dryBus.connect(dry); dry.connect(pan); wet.connect(wetG); wetG.connect(pan); pan.connect(out); out.connect(audioCtx.destination);
-    env.gain.setValueAtTime(0.0001,t0); env.gain.exponentialRampToValueAtTime(1.0*power,t0+0.03); env.gain.exponentialRampToValueAtTime(0.0001,stopAt);
-    n.start(t0); sub.start(t0); growl.start(t0); lfo.start(t0); n.stop(stopAt); sub.stop(stopAt); growl.stop(stopAt); lfo.stop(stopAt+0.01);
+    env.connect(comp);
+    comp.connect(dry); comp.connect(wet);
+    dry.connect(pan); wet.connect(wetG); wetG.connect(pan);
+    pan.connect(out); out.connect(audioCtx.destination);
+
+    env.gain.setValueAtTime(0.0001,t0);
+    env.gain.exponentialRampToValueAtTime(1.0*power,t0+0.03);
+    env.gain.exponentialRampToValueAtTime(0.0001,stopAt);
+
+    n.start(t0); sub.start(t0); growl.start(t0); lfo.start(t0);
+    n.stop(stopAt); sub.stop(stopAt); growl.stop(stopAt); lfo.stop(stopAt+0.01);
   }catch{}
-}
-function roarSound(power=2){
-  if(muted) return;
-  try{
-    if(roarEl && roarEl.readyState>2){ roarEl.currentTime=0; roarEl.volume=Math.min(1,0.6*power); roarEl.muted=false; roarEl.play().catch(()=>synthRoar(power)); }
-    else{ synthRoar(power) }
-  }catch{ synthRoar(power) }
 }
 
 function drawCrosshair(){ const r=5; ctx.save(); ctx.translate(mouseX,mouseY); ctx.strokeStyle='rgba(255,235,150,0.95)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-9,0); ctx.lineTo(-4,0); ctx.moveTo(4,0); ctx.lineTo(9,0); ctx.moveTo(0,-9); ctx.lineTo(0,-4); ctx.moveTo(0,4); ctx.lineTo(0,9); ctx.stroke(); ctx.restore() }
@@ -654,15 +640,7 @@ function setGun(x,y){
 wrap.addEventListener('pointerenter',()=>{ if(!isCoarse) gunImg.style.display='block' });
 wrap.addEventListener('pointerleave',()=>{ if(!isCoarse) gunImg.style.display='none' });
 wrap.addEventListener('pointermove',e=>{ const r=wrap.getBoundingClientRect(); mouseX=e.clientX-r.left; mouseY=e.clientY-r.top; setGun(mouseX,mouseY) });
-wrap.addEventListener('pointerdown',async()=>{
-  await resumeAudio();
-  if(!game) return;
-  if(game.scare.active && game.scare.phase==='reveal'){ shootScare(game,mouseX,mouseY); return }
-  if(game.running){ shootAt(game,mouseX,mouseY) }
-});
-
-function playMusic(){ try{ if(bgm){ bgm.volume=0.05; if(!muted) bgm.play().catch(()=>{}) } }catch{} }
-function pauseMusic(){ try{ if(bgm) bgm.pause() }catch{} }
+wrap.addEventListener('pointerdown',async()=>{ if(!game||!game.running) return; await resumeAudio(); shootAt(game,mouseX,mouseY) });
 
 let last=0, rafId=null;
 function loop(ts){
@@ -676,9 +654,8 @@ function loop(ts){
 function start(){
   if(rafId){ cancelAnimationFrame(rafId); rafId=null }
   overlay.style.display='none'; startOverlay.style.display='none';
-  pops.length=0; floats.length=0; confetti.length=0; comboFlame=0; scareDraw=null;
+  pops.length=0; floats.length=0; comboFlame=0;
   game=newGame(); renderMission(); rankEl.textContent=game.rank; modeEl.textContent='x1'; drawHUD(game);
-  playMusic();
   last=0; rafId=requestAnimationFrame(loop)
 }
 function endSummary(g){
@@ -687,8 +664,6 @@ function endSummary(g){
   const best=saveLocalScore(g.score);
   const bonusText=bonus?` • No-Miss Bonus +${bonus}`:'';
   overScoreEl.textContent=`Score: ${g.score}${bonusText} • Best: ${best} • Misses: ${g.misses} • Rank: ${g.rank}`;
-  pauseMusic();
-  gameOverSound();
   overlay.style.display='flex';
 }
 
@@ -709,9 +684,9 @@ function boot(){ fit(); renderBoard(); startOverlay.style.display='flex'; if(!ra
 if(document.readyState==='complete'||document.readyState==='interactive'){ setTimeout(boot,0) } else { addEventListener('DOMContentLoaded',boot) }
 bigPlay.onclick=async()=>{ await resumeAudio(); start() };
 playAgainBtn.onclick=()=>start();
-muteStart.onchange=()=>{ muted=muteStart.checked; muteChk.checked=muted; if(muted) pauseMusic(); else playMusic() };
-muteOverBtn.onclick=()=>{ muted=!muted; muteChk.checked=muted; muteStart.checked=muted; if(muted) pauseMusic(); else playMusic() };
-muteChk.onchange=()=>{ muted=muteChk.checked; muteStart.checked=muted; if(muted) pauseMusic(); else playMusic() };
+muteStart.onchange=()=>{ muted=muteStart.checked; muteChk.checked=muted };
+muteOverBtn.onclick=()=>{ muted=!muted; muteChk.checked=muted; muteStart.checked=muted };
+muteChk.onchange=()=>{ muted=muteChk.checked; muteStart.checked=muted };
 shareOverBtn.onclick=()=>shareNow();
 refreshLbBtn.onclick=()=>renderBoard();
 </script>
