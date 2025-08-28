@@ -124,6 +124,12 @@
         </div>
 
         <div class="card">
+          <b>Leaderboard (global)</b>
+          <ol id="globalBoard" class="list"></ol>
+          <div id="globalStatus" class="list" style="opacity:.8"></div>
+        </div>
+
+        <div class="card">
           <b>Wallet</b>
           <div id="walletBox" class="list">Not connected</div>
         </div>
@@ -163,6 +169,8 @@ const walletBox=document.getElementById('walletBox');
 const missionBox=document.getElementById('missionBox');
 const resetMissionBtn=document.getElementById('resetMission');
 const bgm=document.getElementById('bgm');
+const globalBoard=document.getElementById('globalBoard');
+const globalStatus=document.getElementById('globalStatus');
 
 let W=0,H=0,dpr=1;
 function fit(){const r=wrap.getBoundingClientRect(); dpr=window.devicePixelRatio||1; W=r.width; H=r.height; cvs.width=W*dpr; cvs.height=H*dpr; cvs.style.width=W+'px'; cvs.style.height=H+'px'; ctx.setTransform(dpr,0,0,dpr,0,0); buildStars() }
@@ -761,16 +769,15 @@ refreshLbBtn.onclick=()=>renderBoard();
 </script>
 
 <script>
-const API_URL = "http://72.60.67.220:8787";
+const API_URL = "https://your-vps-domain.com";
 function phantomProvider(){ const p=window.solana||window.phantom?.solana; if(p&&(p.isPhantom||p.isBraveWallet||p.isSolflare||p.isBackpack)) return p; return null }
 async function ensureWalletConnected(){ try{ const prov=phantomProvider(); if(!prov) return null; if(!window.__PG_CONNECTED__){ const r=await prov.connect({onlyIfTrusted:false}); window.wallet=r.publicKey.toString(); window.__PG_CONNECTED__=true; const box=document.getElementById("walletBox"); if(box) box.textContent="Connected: "+window.wallet } return prov }catch{ return null } }
 async function signMessageWithPhantom(message){ const prov=await ensureWalletConnected(); if(!prov||!prov.signMessage) return null; const enc=new TextEncoder(); const signed=await prov.signMessage(enc.encode(message),"utf8"); return { signature: signed.signature, pubkey: prov.publicKey.toString() } }
 function bs58Encode(u8){ const ALPHABET="123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"; const BASE=ALPHABET.length; const x=[...u8]; let digits=[0]; for(let i=0;i<x.length;i++){ let carry=x[i]; for(let j=0;j<digits.length;++j){ const val=digits[j]*256+carry; digits[j]=val%BASE; carry=(val/BASE)|0 } while(carry){ digits.push(carry%BASE); carry=(carry/BASE)|0 } } let zeros=0; for(let k=0;k<x.length&&x[k]===0;k++) zeros++; let str=""; for(let q=0;q<zeros;q++) str+="1"; for(let w=digits.length-1;w>=0;w--) str+=ALPHABET[digits[w]]; return str }
 async function submitGlobalScore(score){ try{ if(!Number.isFinite(score)||score<=0) return; const prov=phantomProvider(); if(!prov||!prov.signMessage) return; const ts=Date.now(); const message=`PumpGyatt|${Math.floor(score)}|${ts}`; const sigObj=await signMessageWithPhantom(message); if(!sigObj) return; const sigBase58=bs58Encode(sigObj.signature); const body={pubkey:sigObj.pubkey,score:Math.floor(score),ts,sig:sigBase58}; await fetch(API_URL+"/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(r=>r.json()).catch(()=>null); await renderGlobalBoard() }catch{} }
-async function renderGlobalBoard(){ try{ const res=await fetch(API_URL+"/top").then(r=>r.json()).catch(()=>null); if(!res||!res.ok) return; let host=document.getElementById("globalBoard"); if(!host){ const card=document.createElement("div"); card.className="card"; card.innerHTML="<b>Leaderboard (global)</b><ol id='globalBoard' class='list'></ol>"; const side=document.querySelector(".grid"); if(side) side.appendChild(card); host=document.getElementById("globalBoard") } host.innerHTML=res.items.map((x,i)=>`<li>#${i+1} ${x.pubkey.slice(0,4)}…${x.pubkey.slice(-4)} — ${x.best}</li>`).join("") }catch{} }
-function addSignTestUI(){ const card=document.createElement("div"); card.className="card"; card.innerHTML="<b>Wallet Tools</b><div class='list' id='phantomStatus'>Phantom: checking…</div><div style='margin-top:8px' class='row'><button id='signTestBtn' class='btn'>Sign Test</button></div>"; const side=document.querySelector(".grid"); if(side) side.appendChild(card); const prov=phantomProvider(); const s=document.getElementById("phantomStatus"); if(s) s.textContent=prov?"Phantom detected":"Phantom not found"; const btn=document.getElementById("signTestBtn"); if(btn) btn.onclick=async()=>{ const m=`PumpGyatt|test|${Date.now()}`; const sig=await signMessageWithPhantom(m); alert(sig?"Signature OK":"Sign failed") } }
+async function renderGlobalBoard(){ try{ if(!globalBoard||!globalStatus) return; globalStatus.textContent="Loading…"; const res=await fetch(API_URL+"/top").then(r=>r.json()).catch(()=>null); if(!res||!res.ok){ globalStatus.textContent="Unable to load global leaderboard"; globalBoard.innerHTML=""; return } globalStatus.textContent=""; globalBoard.innerHTML=res.items.map((x,i)=>`<li>#${i+1} ${x.pubkey.slice(0,4)}…${x.pubkey.slice(-4)} — ${x.best}</li>`).join("") }catch{ if(globalStatus){ globalStatus.textContent="Unable to load global leaderboard" } } }
 (function patchEndSummaryOnce(){ if(window.__PG_PATCHED__) return; window.__PG_PATCHED__=true; const orig=window.endSummary; if(typeof orig==="function"){ window.endSummary=function(g){ try{ orig(g) }catch{} try{ submitGlobalScore(g&&g.score?g.score:0) }catch{} } }})();
-document.addEventListener("DOMContentLoaded",()=>{ addSignTestUI(); setTimeout(renderGlobalBoard,800) });
+document.addEventListener("DOMContentLoaded",()=>{ renderGlobalBoard(); setInterval(renderGlobalBoard,20000) });
 </script>
 </body>
 </html>
