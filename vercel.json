@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    { "source": "/top",        "destination": "http://72.60.67.220:8787/top" },
+    { "source": "/submit",     "destination": "http://72.60.67.220:8787/submit" },
+    { "source": "/api/top",    "destination": "http://72.60.67.220:8787/top" },
+    { "source": "/api/submit", "destination": "http://72.60.67.220:8787/submit" }
+  ]
+}
