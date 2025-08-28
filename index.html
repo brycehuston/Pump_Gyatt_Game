@@ -200,7 +200,7 @@ function drawStars(){ const t=performance.now()/1000; ctx.save(); ctx.translate(
 function drawMoon(x,y,r){ const body=ctx.createRadialGradient(x-r*0.25,y-r*0.25,r*0.2,x,y,r*1.02); body.addColorStop(0,'#fffdf5'); body.addColorStop(0.6,'#e7e2d3'); body.addColorStop(1,'#c9c4b0'); ctx.fillStyle=body; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.save(); ctx.globalAlpha=0.18; for(let i=0;i<12;i++){ const a=(i*0.52)+0.7, rr=r*(0.04+0.06*Math.random()); const cx=x+Math.cos(a)*r*0.45, cy=y+Math.sin(a)*r*0.35; const g=ctx.createRadialGradient(cx,cy,rr*0.3,cx,cy,rr); g.addColorStop(0,'#918a75'); g.addColorStop(1,'rgba(145,138,117,0)'); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx,cy,rr,0,Math.PI*2); ctx.fill() } ctx.restore(); const term=ctx.createLinearGradient(x-r*0.6,y-r*0.6,x+r*0.6,y+r*0.6); term.addColorStop(0,'rgba(0,0,0,0.35)'); term.addColorStop(0.55,'rgba(0,0,0,0)'); ctx.fillStyle=term; ctx.beginPath(); ctx.arc(x,y,r*1.02,0,Math.PI*2); ctx.fill(); const haze=ctx.createRadialGradient(x,y,r*0.2,x,y,r*1.8); haze.addColorStop(0,'rgba(255,250,220,0.35)'); haze.addColorStop(1,'rgba(255,220,120,0)'); ctx.fillStyle=haze; ctx.beginPath(); ctx.arc(x,y,r*1.6,0,Math.PI*2); ctx.fill() }
 function drawTent(x,y,w,h){ ctx.save(); const stripe='#3b1b4a', stripe2='#d14f2b'; ctx.fillStyle='#1a0f27'; ctx.fillRect(x,y-h,w,h); const stripeW=22; for(let sx=x; sx<x+w; sx+=stripeW){ ctx.fillStyle = ((Math.floor((sx-x)/stripeW)%2)===0)?stripe:stripe2; ctx.fillRect(sx,y-h,stripeW,h) } ctx.fillStyle='#c9a23a'; ctx.fillRect(x,y-h-12,w,12); ctx.restore() }
 function drawCurtains(){ const grd=ctx.createLinearGradient(0,0,0,140); grd.addColorStop(0,'#6c0d24'); grd.addColorStop(1,'#2a0610'); ctx.fillStyle=grd; ctx.fillRect(0,0,60,H*0.55); ctx.fillRect(W-60,0,60,H*0.55); ctx.fillStyle='#caa84a'; ctx.fillRect(0,0,W,16); ctx.fillRect(0,H*0.55-12,W,12); for(let i=0;i<8;i++){ ctx.beginPath(); ctx.arc(i*(W/8)+W/16, 16, 6, 0, Math.PI*2); ctx.fill() } }
-function drawLantern(x,y){ const flick=0.7+0.3*Math.sin(performance.now()/120 + x); ctx.save(); ctx.translate(x,y); ctx.fillStyle='#caa84a'; ctx.fillRect(-2,-8,4,8); const g=ctx.createRadialGradient(0,0,2,0,0,18); g.addColorStop(0,`rgba(255,240,160,${0.9*flick})`); g.addColorStop(1,`rgba(255,140,0,0)`); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,18,0,Math.PI*2); ctx.fill(); ctx.restore() }
+function drawLantern(x,y){ const flick=0.7+0.3*Math.sin(performance.now()/120 + x); ctx.save(); ctx.translate(x,y); ctx.fillStyle='#caa84a'; ctx.fillRect(-2,-8,4,8); const g=ctx.createRadialGradient(0,0,2,0,0,18); g.addColorStop(0,`rgba(255,240,160,${0.9*flick})`); g.addColorStop(1,'rgba(255,140,0,0)'); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,18,0,Math.PI*2); ctx.fill(); ctx.restore() }
 function drawFloor(){ const y=H-64; ctx.fillStyle='#2b2342'; ctx.fillRect(0,y,W,64); ctx.fillStyle='#1e1831'; for(let i=0;i<W;i+=64){ ctx.fillRect(i,y,56,4) } ctx.fillStyle='rgba(255,255,255,0.06)'; for(let i=0;i<6;i++){ ctx.fillRect(0,y-6-i*70,W,2) } }
 function drawBackground(){ const sky=ctx.createLinearGradient(0,0,0,H); sky.addColorStop(0,'#0f121a'); sky.addColorStop(1,'#090912'); ctx.fillStyle=sky; ctx.fillRect(0,0,W,H); drawStars(); const moonX=W*0.82+parX*14, moonY=H*0.18+parY*8; drawMoon(moonX,moonY,60); const t=performance.now()/1000; ctx.globalAlpha=1; ctx.fillStyle='#0b0f14'; for(let i=0;i<5;i++){ const y=H*0.58+i*18, sway=Math.sin(t*0.8+i)*8; ctx.beginPath(); ctx.moveTo(-50, H); for(let x=0;x<=W+50;x+=48){ const ty = y + Math.sin((x*0.01)+i)*14 + sway; ctx.lineTo(x, ty) } ctx.lineTo(W+50,H); ctx.closePath(); ctx.fill() } ctx.save(); ctx.translate(parX*20, parY*10); for(let i=0;i<3;i++){ const baseY=H*0.60+i*38; drawTent(-60+i*(W/3.2), baseY, W/3.2+40, 90-i*10) } ctx.restore(); drawCurtains(); drawLantern(60+parX*8, 48+parY*4); drawLantern(W-60+parX*8, 48+parY*4); drawFloor() }
 
@@ -687,20 +687,69 @@ function endSummary(g){
   overlay.style.display='flex';
 }
 
-function saveLocalScore(score){ const key='pk_local_leaderboard'; const arr=safeLSGet(key,[]); const name=currentWallet()||'guest'; arr.push({name,score,t:Date.now()}); arr.sort((a,b)=>b.score-a.score); const top=arr.slice(0,10); safeLSPut(key,top); renderBoard(); const mine=top.filter(x=>x.name===name).map(x=>x.score); return mine.length?Math.max(...mine):score }
+function currentWallet(){ return wallet?wallet.slice(0,4)+'…'+wallet.slice(-4):null }
+function saveLocalScore(score){
+  const key='pk_local_leaderboard';
+  const arr=safeLSGet(key,[]);
+  const name=currentWallet()||'guest';
+  arr.push({name,score,t:Date.now()});
+  arr.sort((a,b)=>b.score-a.score);
+  const top=arr.slice(0,10);
+  safeLSPut(key,top);
+  renderBoard();
+  const mine=top.filter(x=>x.name===name).map(x=>x.score);
+  return mine.length?Math.max(...mine):score
+}
 function renderBoard(){ const arr=safeLSGet('pk_local_leaderboard',[]); boardEl.innerHTML=arr.map((x,i)=>`<li>#${i+1} ${escapeHtml(x.name.slice(0,10))} — ${x.score}</li>`).join('') }
 function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&quot;',"'":'&#39;'}[m]))}
 
 let wallet=null;
-function currentWallet(){ return wallet?wallet.slice(0,4)+'…'+wallet.slice(-4):null }
-async function connectWallet(){ try{ const provider=window.solana||window.phantom?.solana; if(!provider){ walletBox.textContent='Phantom not found'; return } const res=await provider.connect({onlyIfTrusted:false}); wallet=res.publicKey.toString(); walletBox.textContent='Connected: '+wallet }catch(e){ walletBox.textContent='Wallet error' } }
+const WALLET_KEY='pk_wallet';
+function rewriteGuestToWallet(){
+  if(!wallet) return;
+  const key='pk_local_leaderboard';
+  const arr=safeLSGet(key,[]);
+  let changed=false;
+  for(const row of arr){ if(row.name==='guest'){ row.name=currentWallet(); changed=true } }
+  if(changed){ safeLSPut(key,arr); renderBoard() }
+}
+function setWallet(addr){
+  wallet=addr;
+  try{ localStorage.setItem(WALLET_KEY, JSON.stringify(addr)) }catch{}
+  window.wallet=addr;
+  if(walletBox) walletBox.textContent='Connected: '+wallet;
+  rewriteGuestToWallet();
+}
+async function tryAutoConnect(){
+  try{
+    const provider=window.solana||window.phantom?.solana;
+    if(provider){
+      try{
+        const r=await provider.connect({onlyIfTrusted:true});
+        if(r?.publicKey) setWallet(r.publicKey.toString())
+      }catch{}
+    }
+    if(!wallet){
+      const saved=safeLSGet(WALLET_KEY,null);
+      if(saved){ setWallet(saved) }
+    }
+  }catch{}
+}
+async function connectWallet(){
+  try{
+    const provider=window.solana||window.phantom?.solana;
+    if(!provider){ walletBox.textContent='Phantom not found'; return }
+    const res=await provider.connect({onlyIfTrusted:false});
+    if(res?.publicKey){ setWallet(res.publicKey.toString()) }
+  }catch(e){ walletBox.textContent='Wallet error' }
+}
 connectBtn.onclick=()=>connectWallet();
 
 submitBtn.onclick=()=>{ if(!game) return; if(game.score<10) return; saveLocalScore(game.score); submitBtn.disabled=true };
 function shareNow(){ const url=encodeURIComponent(location.href); const rank=game?game.rank:'Rookie'; const sc=encodeURIComponent(`I scored ${game?game.score:0} (Rank: ${rank}) on 🎯 Pump Gyatt!`); window.open(`https://twitter.com/intent/tweet?text=${sc}&url=${url}`,'_blank') }
 shareBtn.onclick=()=>shareNow();
 
-function boot(){ fit(); renderBoard(); startOverlay.style.display='flex'; if(!rafId) rafId=requestAnimationFrame(loop) }
+function boot(){ fit(); tryAutoConnect().then(()=>{ rewriteGuestToWallet(); renderBoard() }); startOverlay.style.display='flex'; if(!rafId) rafId=requestAnimationFrame(loop) }
 if(document.readyState==='complete'||document.readyState==='interactive'){ setTimeout(boot,0) } else { addEventListener('DOMContentLoaded',boot) }
 bigPlay.onclick=async()=>{ await resumeAudio(); start() };
 playAgainBtn.onclick=()=>start();
@@ -712,7 +761,7 @@ refreshLbBtn.onclick=()=>renderBoard();
 </script>
 
 <script>
-const API_URL = "http://localhost:8787";
+const API_URL = "http://72.60.67.220:8787";
 function phantomProvider(){ const p=window.solana||window.phantom?.solana; if(p&&(p.isPhantom||p.isBraveWallet||p.isSolflare||p.isBackpack)) return p; return null }
 async function ensureWalletConnected(){ try{ const prov=phantomProvider(); if(!prov) return null; if(!window.__PG_CONNECTED__){ const r=await prov.connect({onlyIfTrusted:false}); window.wallet=r.publicKey.toString(); window.__PG_CONNECTED__=true; const box=document.getElementById("walletBox"); if(box) box.textContent="Connected: "+window.wallet } return prov }catch{ return null } }
 async function signMessageWithPhantom(message){ const prov=await ensureWalletConnected(); if(!prov||!prov.signMessage) return null; const enc=new TextEncoder(); const signed=await prov.signMessage(enc.encode(message),"utf8"); return { signature: signed.signature, pubkey: prov.publicKey.toString() } }
