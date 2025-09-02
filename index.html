@@ -53,7 +53,6 @@
       <div class="row">
         <button id="connectBtn" class="btn">Connect Phantom</button>
         <label class="btn">🔇 Mute <input id="muteChk" type="checkbox" style="vertical-align:-2px;margin-left:6px"></label>
-        <button id="submitBtn" class="btn" disabled>Save Local Score</button>
         <button id="shareBtn" class="btn">Share on X</button>
       </div>
     </header>
@@ -118,12 +117,6 @@
         </div>
 
         <div class="card">
-          <b>Leaderboard (local)</b>
-          <ol id="board" class="list"></ol>
-          <button id="refreshLb" class="btn" style="width:100%">Refresh</button>
-        </div>
-
-        <div class="card">
           <b>Leaderboard (global)</b>
           <ol id="globalBoard" class="list"></ol>
           <div id="globalStatus" class="list" style="opacity:.8"></div>
@@ -159,11 +152,8 @@ const comboEl=document.getElementById('combo');
 const missEl=document.getElementById('miss');
 const rankEl=document.getElementById('rank');
 const modeEl=document.getElementById('mode');
-const boardEl=document.getElementById('board');
 const connectBtn=document.getElementById('connectBtn');
-const submitBtn=document.getElementById('submitBtn');
 const shareBtn=document.getElementById('shareBtn');
-const refreshLbBtn=document.getElementById('refreshLb');
 const muteChk=document.getElementById('muteChk');
 const walletBox=document.getElementById('walletBox');
 const missionBox=document.getElementById('missionBox');
@@ -195,7 +185,7 @@ function updateFx(dt){
   for(const p of pops){ p.t+=dt; p.x+=p.vx; p.y+=p.vy; p.vy+=0.018 }
   for(let i=pops.length-1;i>=0;i--) if(pops[i].t>pops[i].life) pops.splice(i,1);
   for(const fl of floats){ fl.t+=dt; fl.y+=fl.vy }
-  for(let i=floats.length-1;i>=0;i--) if(floats[i].t>floats[i].life) floats.splice(i,1);
+  for(let i=floats.length-1;i>=0;i--) if(floats[i].t>fllife) floats.splice(i,1);
   for(const cf of confetti){ cf.t+=dt; cf.vy+=cf.ay; cf.x+=cf.vx; cf.y+=cf.vy; cf.rot+=cf.vr }
   for(let i=confetti.length-1;i>=0;i--){ const cf=confetti[i]; if(cf.t>cf.life || cf.y>H-40) confetti.splice(i,1) }
   if(rankFx>0) rankFx=Math.max(0,rankFx-dt); if(comboFlame>0) comboFlame=Math.max(0,comboFlame-dt*0.8)
@@ -262,10 +252,9 @@ function drawGhost(t){ const s=(performance.now()-t.animStart)/1000; const bob=6
 let game=null;
 
 function safeLSGet(key, def){ try{ const raw=localStorage.getItem(key); return raw?JSON.parse(raw):def }catch{ return def } }
-function safeLSPut(key,val){ try{ localStorage.setItem(key, JSON.stringify(val)) }catch{} }
 function today(){ const d=new Date(); return d.toISOString().slice(0,10) }
-function loadMission(){ let m=safeLSGet('pk_mission',null); if(!m || m.day!==today()){ m={day:today(),goalGlow:3,hitGlow:0,done:false}; safeLSPut('pk_mission',m) } return m }
-function saveMission(m){ safeLSPut('pk_mission',m); renderMission() }
+function loadMission(){ let m=safeLSGet('pk_mission',null); if(!m || m.day!==today()){ m={day:today(),goalGlow:3,hitGlow:0,done:false}; localStorage.setItem('pk_mission',JSON.stringify(m)) } return m }
+function saveMission(m){ localStorage.setItem('pk_mission',JSON.stringify(m)); renderMission() }
 function renderMission(){ const m=loadMission(); missionBox.textContent = m.done?`Completed • Hit ${m.goalGlow}/${m.goalGlow} glowing pumpkins`: `Hit ${m.hitGlow}/${m.goalGlow} glowing pumpkins today` }
 resetMissionBtn.onclick=()=>{ try{ localStorage.removeItem('pk_mission') }catch{} renderMission() }
 
@@ -673,7 +662,8 @@ function loop(ts){
   rafId=requestAnimationFrame(loop)
 }
 
-function playMusic(){ try{ if(bgm){ bgm.volume=0.05; if(!muted) bgm.play().catch(()=>{}) } }catch{} }
+/* music helpers */
+function restartMusic(){ try{ if(bgm){ bgm.pause(); bgm.currentTime=0; bgm.volume=0.05; if(!muted) bgm.play().catch(()=>{}) } }catch{} }
 function pauseMusic(){ try{ if(bgm) bgm.pause() }catch{} }
 
 function start(){
@@ -681,52 +671,26 @@ function start(){
   overlay.style.display='none'; startOverlay.style.display='none';
   pops.length=0; floats.length=0; confetti.length=0; comboFlame=0; scareDraw=null;
   game=newGame(); renderMission(); rankEl.textContent=game.rank; modeEl.textContent='x1'; drawHUD(game);
-  playMusic();
+  restartMusic();              /* <-- always start music from the beginning */
   last=0; rafId=requestAnimationFrame(loop)
 }
 function endSummary(g){
   let bonus=0;
   if(g.misses===0 && g.score>0){ bonus=Math.max(10,Math.round(g.score*0.1)); g.score+=bonus }
-  const best=saveLocalScore(g.score);
   const bonusText=bonus?` • No-Miss Bonus +${bonus}`:'';
-  overScoreEl.textContent=`Score: ${g.score}${bonusText} • Best: ${best} • Misses: ${g.misses} • Rank: ${g.rank}`;
+  overScoreEl.textContent=`Score: ${g.score}${bonusText} • Misses: ${g.misses} • Rank: ${g.rank}`;
   pauseMusic();
   gameOverSound();
   overlay.style.display='flex';
 }
 
-function currentWallet(){ return wallet?wallet.slice(0,4)+'…'+wallet.slice(-4):null }
-function saveLocalScore(score){
-  const key='pk_local_leaderboard';
-  const arr=safeLSGet(key,[]);
-  const name=currentWallet()||'guest';
-  arr.push({name,score,t:Date.now()});
-  arr.sort((a,b)=>b.score-a.score);
-  const top=arr.slice(0,10);
-  safeLSPut(key,top);
-  renderBoard();
-  const mine=top.filter(x=>x.name===name).map(x=>x.score);
-  return mine.length?Math.max(...mine):score
-}
-function renderBoard(){ const arr=safeLSGet('pk_local_leaderboard',[]); boardEl.innerHTML=arr.map((x,i)=>`<li>#${i+1} ${escapeHtml(x.name.slice(0,10))} — ${x.score}</li>`).join('') }
-function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&quot;',"'":'&#39;'}[m]))}
-
 let wallet=null;
 const WALLET_KEY='pk_wallet';
-function rewriteGuestToWallet(){
-  if(!wallet) return;
-  const key='pk_local_leaderboard';
-  const arr=safeLSGet(key,[]);
-  let changed=false;
-  for(const row of arr){ if(row.name==='guest'){ row.name=currentWallet(); changed=true } }
-  if(changed){ safeLSPut(key,arr); renderBoard() }
-}
 function setWallet(addr){
   wallet=addr;
   try{ localStorage.setItem(WALLET_KEY, JSON.stringify(addr)) }catch{}
   window.wallet=addr;
   if(walletBox) walletBox.textContent='Connected: '+wallet;
-  rewriteGuestToWallet();
 }
 async function tryAutoConnect(){
   try{
@@ -753,27 +717,26 @@ async function connectWallet(){
 }
 connectBtn.onclick=()=>connectWallet();
 
-submitBtn.onclick=()=>{ if(!game) return; if(game.score<10) return; saveLocalScore(game.score); submitBtn.disabled=true };
 function shareNow(){ const url=encodeURIComponent(location.href); const rank=game?game.rank:'Rookie'; const sc=encodeURIComponent(`I scored ${game?game.score:0} (Rank: ${rank}) on 🎯 Pump Gyatt!`); window.open(`https://twitter.com/intent/tweet?text=${sc}&url=${url}`,'_blank') }
 shareBtn.onclick=()=>shareNow();
 
-function boot(){ fit(); tryAutoConnect().then(()=>{ rewriteGuestToWallet(); renderBoard() }); startOverlay.style.display='flex'; if(!rafId) rafId=requestAnimationFrame(loop) }
+function boot(){ fit(); tryAutoConnect(); startOverlay.style.display='flex'; if(!rafId) rafId=requestAnimationFrame(loop) }
 if(document.readyState==='complete'||document.readyState==='interactive'){ setTimeout(boot,0) } else { addEventListener('DOMContentLoaded',boot) }
 bigPlay.onclick=async()=>{ await resumeAudio(); start() };
 playAgainBtn.onclick=()=>start();
-muteStart.onchange=()=>{ muted=muteStart.checked; muteChk.checked=muted; if(muted) pauseMusic(); else playMusic() };
-muteOverBtn.onclick=()=>{ muted=!muted; muteChk.checked=muted; muteStart.checked=muted; if(muted) pauseMusic(); else playMusic() };
-muteChk.onchange=()=>{ muted=muteChk.checked; muteStart.checked=muted; if(muted) pauseMusic(); else playMusic() };
+muteStart.onchange=()=>{ muted=muteStart.checked; muteChk.checked=muted; if(muted) pauseMusic(); else restartMusic() };
+muteOverBtn.onclick=()=>{ muted=!muted; muteChk.checked=muted; muteStart.checked=muted; if(muted) pauseMusic(); else restartMusic() };
+muteChk.onchange=()=>{ muted=muteChk.checked; muteStart.checked=muted; if(muted) pauseMusic(); else restartMusic() };
 shareOverBtn.onclick=()=>shareNow();
-refreshLbBtn.onclick=()=>renderBoard();
 </script>
 
 <script>
+/* ===== Global leaderboard (same-origin proxy) ===== */
 const API_URL = "";
 function phantomProvider(){ const p=window.solana||window.phantom?.solana; if(p&&(p.isPhantom||p.isBraveWallet||p.isSolflare||p.isBackpack)) return p; return null }
 async function ensureWalletConnected(){ try{ const prov=phantomProvider(); if(!prov) return null; if(!window.__PG_CONNECTED__){ const r=await prov.connect({onlyIfTrusted:false}); window.wallet=r.publicKey.toString(); window.__PG_CONNECTED__=true; const box=document.getElementById("walletBox"); if(box) box.textContent="Connected: "+window.wallet } return prov }catch{ return null } }
 async function signMessageWithPhantom(message){ const prov=await ensureWalletConnected(); if(!prov||!prov.signMessage) return null; const enc=new TextEncoder(); const signed=await prov.signMessage(enc.encode(message),"utf8"); return { signature: signed.signature, pubkey: prov.publicKey.toString() } }
-function bs58Encode(u8){ const ALPHABET="123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"; const BASE=ALPHABET.length; const x=[...u8]; let digits=[0]; for(let i=0;i<x.length;i++){ let carry=x[i]; for(let j=0;j<digits.length;++j){ const val=digits[j]*256+carry; digits[j]=val%BASE; carry=(val/BASE)|0 } while(carry){ digits.push(carry%BASE); carry=(carry/BASE)|0 } } let zeros=0; for(let k=0;k<x.length&&x[k]===0;k++) zeros++; let str=""; for(let q=0;q<zeros;q++) str+="1"; for(let w=digits.length-1;w>=0;w--) str+=ALPHABET[digits[w]]; return str }
+function bs58Encode(u8){ const A="123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"; const B=A.length; const x=[...u8]; let d=[0]; for(let i=0;i<x.length;i++){ let c=x[i]; for(let j=0;j<d.length;++j){ const v=d[j]*256+c; d[j]=v%B; c=(v/B)|0 } while(c){ d.push(c%B); c=(c/B)|0 } } let z=0; for(let k=0;k<x.length&&x[k]===0;k++) z++; let s=""; for(let q=0;q<z;q++) s+="1"; for(let w=d.length-1;w>=0;w--) s+=A[d[w]]; return s }
 async function submitGlobalScore(score){ try{ if(!Number.isFinite(score)||score<=0) return; const prov=phantomProvider(); if(!prov||!prov.signMessage) return; const ts=Date.now(); const message=`PumpGyatt|${Math.floor(score)}|${ts}`; const sigObj=await signMessageWithPhantom(message); if(!sigObj) return; const sigBase58=bs58Encode(sigObj.signature); const body={pubkey:sigObj.pubkey,score:Math.floor(score),ts,sig:sigBase58}; await fetch(API_URL+"/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(r=>r.json()).catch(()=>null); await renderGlobalBoard() }catch{} }
 async function renderGlobalBoard(){ try{ if(!globalBoard||!globalStatus) return; globalStatus.textContent="Loading…"; const res=await fetch(API_URL+"/top").then(r=>r.json()).catch(()=>null); if(!res||!res.ok){ globalStatus.textContent="Unable to load global leaderboard"; globalBoard.innerHTML=""; return } globalStatus.textContent=""; globalBoard.innerHTML=res.items.map((x,i)=>`<li>#${i+1} ${x.pubkey.slice(0,4)}…${x.pubkey.slice(-4)} — ${x.best}</li>`).join("") }catch{ if(globalStatus){ globalStatus.textContent="Unable to load global leaderboard" } } }
 (function patchEndSummaryOnce(){ if(window.__PG_PATCHED__) return; window.__PG_PATCHED__=true; const orig=window.endSummary; if(typeof orig==="function"){ window.endSummary=function(g){ try{ orig(g) }catch{} try{ submitGlobalScore(g&&g.score?g.score:0) }catch{} } }})();
