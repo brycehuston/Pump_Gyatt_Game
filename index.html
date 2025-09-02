@@ -35,7 +35,6 @@
   .bigPlay{font-size:26px;padding:16px 22px;border-radius:16px}
   .tag{padding:4px 8px;border-radius:999px;background:#1c1c2e;border:1px solid #2b2b47;font-weight:800;font-size:12px}
   .list{line-height:1.5;color:#ddd}
-  input.api{flex:1;min-width:0;border:1px solid var(--stroke);background:#0f0f21;color:var(--fg);border-radius:10px;padding:8px 10px;font-weight:700}
   @keyframes flicker{0%,18%,22%,25%,53%,57%,100%{opacity:1}20%,24%,55%{opacity:.65}}
   @media (max-width: 980px) {
     .wrap{padding:10px}
@@ -66,8 +65,7 @@
           <div class="over-box">
             <div class="over-title">PUMP GYATT</div>
             <div class="over-sub">Tap the pumpkins. Pumpkin butt = bonus. One glowing target at a time. Avoid bats. Ghosts are +5.</div>
-            <div style="margin:10px 0 18px;opacity:.85">60s • Frenzy at 30s • 2 bosses min • Sprinter once • Mobile friendly</div>
-            <div id="mobileTip" class="over-sub" style="font-size:14px;opacity:.75;display:none">Tip: on mobile, double-tap to auto-aim.</div>
+            <div style="margin:10px 0 18px;opacity:.85">60s • Frenzy at 30s • 2 bosses min • Sprinter once • Double-tap auto-aim on mobile</div>
             <div class="over-actions">
               <button id="bigPlay" class="over-btn primary bigPlay">▶ Play</button>
               <label class="over-btn">🔇 Mute <input id="muteStart" type="checkbox" style="vertical-align:-1px;margin-left:6px"></label>
@@ -108,7 +106,7 @@
           <div class="list">
             Normal: body +1, pumpkin +2 • <span class="tag">Glowing +10</span> and rare <span class="tag">+5s</span><br>
             Boss (HP 6): body +2, pumpkin +4, glowing +12 • Bats −2 • Ghost +5<br>
-            <span class="tag">Frenzy</span> at 30s: x2 score, faster spawns • Special sprinter appears once
+            <span class="tag">Frenzy</span> at 30s: x2 score, faster spawns • Sprinter once
           </div>
         </div>
 
@@ -119,7 +117,7 @@
         </div>
 
         <div class="card">
-          <b>Leaderboard</b>
+          <b>Global Leaderboard</b>
           <ol id="gboard" class="list"></ol>
           <button id="refreshGb" class="btn" style="width:100%">Refresh</button>
         </div>
@@ -163,7 +161,6 @@ const walletBox=document.getElementById('walletBox');
 const missionBox=document.getElementById('missionBox');
 const resetMissionBtn=document.getElementById('resetMission');
 const bgm=document.getElementById('bgm');
-const mobileTip=document.getElementById('mobileTip');
 const gBoardEl=document.getElementById('gboard');
 const refreshGbBtn=document.getElementById('refreshGb');
 
@@ -178,35 +175,23 @@ const ghostImg=new Image(); ghostImg.src="ghost.png";
 const sprinterImg=new Image(); sprinterImg.src="glowing-pumpk.png";
 
 const isCoarse = matchMedia && matchMedia('(pointer: coarse)').matches;
-let MOBILE = { assist: isCoarse ? 48 : 0, hitScale: isCoarse ? 1.28 : 1, speedMul: isCoarse ? 0.9 : 1, spawnIntMul: isCoarse ? 1.1 : 1, sprinterSpeedMul: isCoarse ? 0.95 : 1 };
+let MOBILE = { assist: isCoarse ? 28 : 0, hitScale: isCoarse ? 1.1 : 1, speedMul: isCoarse ? 1.15 : 1, spawnIntMul: isCoarse ? 0.9 : 1, sprinterSpeedMul: isCoarse ? 1.2 : 1 };
 function retuneMobile(){
   const portrait = H > W;
   if(isCoarse && portrait){
-    MOBILE.assist = 52;
-    MOBILE.hitScale = 1.35;
-    MOBILE.speedMul = 0.9;
-    MOBILE.spawnIntMul = 1.10;
-    MOBILE.sprinterSpeedMul = 0.95;
-  }else if(isCoarse){
-    MOBILE.assist = 48;
-    MOBILE.hitScale = 1.28;
-    MOBILE.speedMul = 0.90;
-    MOBILE.spawnIntMul = 1.10;
-    MOBILE.sprinterSpeedMul = 0.95;
-  }else{
-    MOBILE.assist = 0;
-    MOBILE.hitScale = 1.0;
-    MOBILE.speedMul = 1.0;
-    MOBILE.spawnIntMul = 1.0;
-    MOBILE.sprinterSpeedMul = 1.0;
+    MOBILE.assist = 24;
+    MOBILE.hitScale = 1.06;
+    MOBILE.speedMul = 1.2;
+    MOBILE.spawnIntMul = 0.88;
+    MOBILE.sprinterSpeedMul = 1.25;
   }
 }
 
 const pops=[], floats=[], confetti=[];
 let rankFx=0, rankText="", comboFlame=0;
 function spawnPop(x,y){ for(let i=0;i<9;i++) pops.push({x,y,vx:(Math.random()*2-1)*2.0,vy:(Math.random()*2-1)*1.8-0.5,r:2+Math.random()*2,life:220,t:0,h:28+Math.random()*10}) }
-function spawnConfetti(x,y,opt={}){ const count=opt.count ?? (opt.big?80:40); const gold=!!opt.gold; const palette = gold? ['#ffd700','#ffc400','#ffea70','#ffcf33','#ffe28a'] : ['#ff5e5e','#ffd166','#06d6a0','#4cc9f0','#f72585']; for(let i=0;i<count;i++){ const a=Math.random()*Math.PI*2; const sp=(opt.big?(2+Math.random()*3):(1+Math.random()*2)); const vx=Math.cos(a)*sp, vy=Math.sin(a)*sp-(opt.big?2.2:1.4); const size=(opt.big?(4+Math.random()*4):(3+Math.random()*3)); const life=(opt.big?(1600+Math.random()*800):(1200+Math.random()*600)); confetti.push({x,y,vx,vy,ay:0.06,t:0,life,size,rot:Math.random()*6.28,vr:-0.2+Math.random()*0.4,color:palette[i%palette.length]}) } }
-function addFloat(text,x,y,fill='rgb(255,230,120)',lifeMs=1400){ if(!Number.isFinite(x)||!Number.isFinite(y)) return; floats.push({text,x,y,vy:-0.22,life:lifeMs,t:0,fill}) }
+function spawnConfetti(x,y,opt={}){ const count=opt.count ?? (opt.big?80:40); const gold=!!opt.gold; const palette = gold? ['#ffd700','#ffc400','#ffea70','#ffcf33','#ffe28a'] : ['#ff5e5e','#ffd166','#06d6a0','#4cc9f0','#f72585']; for(let i=0;i<count;i++){ const a=Math.random()*Math.PI*2; const sp=(opt.big?(2.2+Math.random()*3.2):(1.2+Math.random()*2.2)); const vx=Math.cos(a)*sp, vy=Math.sin(a)*sp-(opt.big?2.4:1.6); const size=(opt.big?(4+Math.random()*4):(3+Math.random()*3)); const life=(opt.big?(1600+Math.random()*800):(1200+Math.random()*600)); confetti.push({x,y,vx,vy,ay:0.07,t:0,life,size,rot:Math.random()*6.28,vr:-0.25+Math.random()*0.5,color:palette[i%palette.length]}) } }
+function addFloat(text,x,y,fill='rgb(255,230,120)',lifeMs=1400){ if(!Number.isFinite(x)||!Number.isFinite(y)) return; floats.push({text,x,y,vy:-0.24,life:lifeMs,t:0,fill}) }
 function updateFx(dt){
   for(const p of pops){ p.t+=dt; p.x+=p.vx; p.y+=p.vy; p.vy+=0.018 }
   for(let i=pops.length-1;i>=0;i--) if(pops[i].t>pops[i].life) pops.splice(i,1);
@@ -229,7 +214,7 @@ function drawLantern(x,y){ const flick=0.7+0.3*Math.sin(performance.now()/120 + 
 function drawFloor(){ const y=H-64; ctx.fillStyle='#2b2342'; ctx.fillRect(0,y,W,64); ctx.fillStyle='#1e1831'; for(let i=0;i<W;i+=64){ ctx.fillRect(i,y,56,4) } ctx.fillStyle='rgba(255,255,255,0.06)'; for(let i=0;i<6;i++){ ctx.fillRect(0,y-6-i*70,W,2) } }
 function drawBackground(){ const sky=ctx.createLinearGradient(0,0,0,H); sky.addColorStop(0,'#0f121a'); sky.addColorStop(1,'#090912'); ctx.fillStyle=sky; ctx.fillRect(0,0,W,H); drawStars(); const moonX=W*0.82+parX*14, moonY=H*0.18+parY*8; drawMoon(moonX,moonY,60); const t=performance.now()/1000; ctx.globalAlpha=0.22; for(let i=0;i<3;i++){ const cx=(t*10+i*140)% (W+240) -120; ctx.beginPath(); ctx.ellipse(cx, moonY+20+i*10, 120-i*10, 30-i*6, 0, 0, Math.PI*2); ctx.fillStyle='rgba(200,200,220,0.18)'; ctx.fill() } ctx.globalAlpha=1; ctx.fillStyle='#0b0f14'; for(let i=0;i<5;i++){ const y=H*0.58+i*18, sway=Math.sin(t*0.8+i)*8; ctx.beginPath(); ctx.moveTo(-50, H); for(let x=0;x<=W+50;x+=48){ const ty = y + Math.sin((x*0.01)+i)*14 + sway; ctx.lineTo(x, ty) } ctx.lineTo(W+50,H); ctx.closePath(); ctx.fill() } ctx.save(); ctx.translate(parX*20, parY*10); for(let i=0;i<3;i++){ const baseY=H*0.60+i*38; drawTent(-60+i*(W/3.2), baseY, W/3.2+40, 90-i*10) } ctx.restore(); drawCurtains(); drawLantern(60+parX*8, 48+parY*4); drawLantern(W-60+parX*8, 48+parY*4); drawFloor() }
 
-const HITBOX_SCALE=0.9;
+const HITBOX_SCALE=0.88;
 function lanes3(){ const f=H-64; return [f-20, f-90, f-160] }
 
 function drawChar(t){
@@ -294,8 +279,8 @@ function newGame(){
   return {
     running:true, ended:false, t:0, timeLeft:60,
     score:0, combo:0, misses:0,
-    targets:[], maxTargets:20,
-    spawnInt:850*MOBILE.spawnIntMul, accelEach:8000, lastSpawn:0, lastAccel:0, minSpawn:260,
+    targets:[], maxTargets:22,
+    spawnInt:780*MOBILE.spawnIntMul, accelEach:8000, lastSpawn:0, lastAccel:0, minSpawn:220,
     shakeTime:0, shakeMag:0, lastHitTime:0,
     blackoutMs:0, glowId:null,
     bossIntro:null, timescale:1, frenzy:false, mult:1,
@@ -309,11 +294,16 @@ function newGame(){
   }
 }
 
-const rankSteps=[{n:"Rookie",t:0},{n:"Slayer",t:100},{n:"King",t:200},{n:"Overlord",t:350},{n:"Pump-King",t:500}];
+const rankSteps=[{n:"Rookie",t:0},{n:"Slayer",t:120},{n:"King",t:240},{n:"Overlord",t:420},{n:"Pump-King",t:600}];
 function updateRank(g){ const cur=rankSteps.filter(r=>g.score>=r.t).pop(); if(cur && cur.n!==g.rank){ g.rank=cur.n; rankEl.textContent=g.rank; rankText="RANK UP: "+g.rank; rankFx=1500; rankUpSound(); addFloat(g.rank, W/2, 120, "rgb(255,230,120)", 1500) } }
 function floorY(){ return H-64 }
 
-function difficultyBoost(g){ const t=g.t/1000; const base = Math.max(0, t-10)*0.018 + g.score*0.0012; return 1 + Math.min(0.45, base) }
+function difficultyBoost(g){
+  const t=g.t/1000;
+  const mobile = isCoarse ? 1.0 : 0.0;
+  const curve = Math.max(0, t-6)*(mobile?0.045:0.03) + g.score*(mobile?0.003:0.0018);
+  return 1 + Math.min(mobile?0.85:0.55, curve)
+}
 
 function spawnZombie(g){
   if(g.targets.length>=g.maxTargets) return;
@@ -321,10 +311,10 @@ function spawnZombie(g){
   const y=L[Math.floor(Math.random()*L.length)];
   const fromLeft=Math.random()<0.5; const x=fromLeft?-60:W+60;
   const diff=difficultyBoost(g);
-  const speed=(0.09+Math.random()*0.09)*MOBILE.speedMul*diff;
-  const scale=0.9+Math.random()*0.2;
+  const speed=(0.12+Math.random()*0.10)*MOBILE.speedMul*diff;
+  const scale=0.9+Math.random()*0.16;
   const w=140*scale, h=200*scale;
-  const bodyR=26*scale*HITBOX_SCALE*MOBILE.hitScale, pumpR=24*scale*HITBOX_SCALE*MOBILE.hitScale;
+  const bodyR=24*scale*HITBOX_SCALE*MOBILE.hitScale, pumpR=22*scale*HITBOX_SCALE*MOBILE.hitScale;
   const pumpOffsetX=-20*scale, pumpOffsetY=-60*scale;
   const z={id:rid(),kind:'zombie',x,y,vx:fromLeft?speed:-speed,vy:0,dead:false,flip:!fromLeft,w,h,bodyR,pumpR,pumpOffsetX,pumpOffsetY,animStart:performance.now(),seed:Math.random()*Math.PI*2,stepAmp:6*scale,bobAmp:3*scale,swayAmp:0.06,squashAmp:0.04,canSwap:true,hp:1,glow:false};
   g.targets.push(z); g.firstWave=true
@@ -337,10 +327,10 @@ function spawnBoss(g){
   const y=L[Math.floor(Math.random()*L.length)];
   const fromLeft=Math.random()<0.5; const x=fromLeft?-110:W+110;
   const diff=difficultyBoost(g);
-  const vx=(fromLeft?0.065:-0.065)*MOBILE.speedMul*diff;
+  const vx=(fromLeft?0.085:-0.085)*MOBILE.speedMul*diff;
   const scale=1.5;
   const w=190*scale, h=260*scale;
-  const bodyR=40*scale*HITBOX_SCALE*MOBILE.hitScale, pumpR=36*scale*HITBOX_SCALE*MOBILE.hitScale;
+  const bodyR=38*scale*HITBOX_SCALE*MOBILE.hitScale, pumpR=34*scale*HITBOX_SCALE*MOBILE.hitScale;
   const pumpOffsetX=-30*scale, pumpOffsetY=-78*scale;
   const boss={id:rid(),kind:'boss',x,y,vx,vy:0,dead:false,flip:!fromLeft,w,h,bodyR,pumpR,pumpOffsetX,pumpOffsetY,animStart:performance.now(),seed:Math.random()*Math.PI*2,stepAmp:7*scale,bobAmp:4*scale,swayAmp:0.05,squashAmp:0.03,hp:6,glow:false};
   g.targets.push(boss);
@@ -348,12 +338,12 @@ function spawnBoss(g){
   g.timescale=0.35;
   roarSound(2.2);
   g.bossCount++;
-  g.nextBossAt = (g.bossCount<g.bossTarget) ? g.t + 15000 + Math.random()*6000 : Infinity;
+  g.nextBossAt = (g.bossCount<g.bossTarget) ? g.t + 14000 + Math.random()*6000 : Infinity;
   g.telegraphed=false;
 }
-function spawnBat(g){ if(g.targets.length>=g.maxTargets) return; const y=floorY()-120-Math.random()*110; const fromLeft=Math.random()<0.5; const x=fromLeft?-40:W+40; const diff=difficultyBoost(g); const vx=(fromLeft?(0.2+Math.random()*0.06):-(0.2+Math.random()*0.06))*MOBILE.speedMul*diff; const w=110,h=60; const r=Math.min(w,h)*0.45*MOBILE.hitScale; g.targets.push({id:rid(),kind:'bat',x,y,vx,vy:0,dead:false,animStart:performance.now(),r,flip:!fromLeft,w,h}) }
-function spawnGhost(g){ if(g.targets.length>=g.maxTargets) return; const y=floorY()-100-Math.random()*120; const fromLeft=Math.random()<0.5; const x=fromLeft?-60:W+60; const diff=difficultyBoost(g); const vx=(fromLeft?(0.09+Math.random()*0.05):-(0.09+Math.random()*0.05))*MOBILE.speedMul*diff; const w=120,h=100; const r=42*MOBILE.hitScale; g.targets.push({id:rid(),kind:'ghost',x,y,vx,vy:0,dead:false,animStart:performance.now(),r,flip:!fromLeft,w,h,seed:Math.random()*6.28}) }
-function spawnSprinter(g){ if(g.specialSpawned || g.targets.length>=g.maxTargets) return; g.specialSpawned=true; const L=lanes3().slice(0,2); const y=L[Math.floor(Math.random()*L.length)]; const fromLeft=Math.random()<0.5; const x=fromLeft?-80:W+80; const diff=difficultyBoost(g); const vx=(fromLeft?0.80:-0.80)*MOBILE.sprinterSpeedMul*diff; const scale=1.05; const w=150*scale, h=210*scale; const bodyR=28*scale*HITBOX_SCALE*MOBILE.hitScale, pumpR=26*scale*HITBOX_SCALE*MOBILE.hitScale; const pumpOffsetX=-22*scale, pumpOffsetY=-62*scale; const t={id:rid(),kind:'sprinter',x,y,vx,vy:0,dead:false,flip:!fromLeft,w,h,bodyR,pumpR,pumpOffsetX,pumpOffsetY,animStart:performance.now(),seed:Math.random()*Math.PI*2,stepAmp:7*scale,bobAmp:5*scale,swayAmp:0.06,squashAmp:0.05,hp:1,glow:true,ttl:3500,spawnedAt:performance.now()}; g.targets.push(t) }
+function spawnBat(g){ if(g.targets.length>=g.maxTargets) return; const y=floorY()-120-Math.random()*110; const fromLeft=Math.random()<0.5; const x=fromLeft?-40:W+40; const diff=difficultyBoost(g); const vx=(fromLeft?(0.24+Math.random()*0.08):-(0.24+Math.random()*0.08))*MOBILE.speedMul*diff; const w=110,h=60; const r=Math.min(w,h)*0.42*MOBILE.hitScale; g.targets.push({id:rid(),kind:'bat',x,y,vx,vy:0,dead:false,animStart:performance.now(),r,flip:!fromLeft,w,h}) }
+function spawnGhost(g){ if(g.targets.length>=g.maxTargets) return; const y=floorY()-100-Math.random()*120; const fromLeft=Math.random()<0.5; const x=fromLeft?-60:W+60; const diff=difficultyBoost(g); const vx=(fromLeft?(0.11+Math.random()*0.06):-(0.11+Math.random()*0.06))*MOBILE.speedMul*diff; const w=120,h=100; const r=40*MOBILE.hitScale; g.targets.push({id:rid(),kind:'ghost',x,y,vx,vy:0,dead:false,animStart:performance.now(),r,flip:!fromLeft,w,h,seed:Math.random()*6.28}) }
+function spawnSprinter(g){ if(g.specialSpawned || g.targets.length>=g.maxTargets) return; g.specialSpawned=true; const L=lanes3().slice(0,2); const y=L[Math.floor(Math.random()*L.length)]; const fromLeft=Math.random()<0.5; const x=fromLeft?-80:W+80; const diff=difficultyBoost(g); const vx=(fromLeft?1.05:-1.05)*MOBILE.sprinterSpeedMul*diff; const scale=1.05; const w=150*scale, h=210*scale; const bodyR=26*scale*HITBOX_SCALE*MOBILE.hitScale, pumpR=24*scale*HITBOX_SCALE*MOBILE.hitScale; const pumpOffsetX=-22*scale, pumpOffsetY=-62*scale; const t={id:rid(),kind:'sprinter',x,y,vx,vy:0,dead:false,flip:!fromLeft,w,h,bodyR,pumpR,pumpOffsetX,pumpOffsetY,animStart:performance.now(),seed:Math.random()*Math.PI*2,stepAmp:7*scale,bobAmp:5*scale,swayAmp:0.06,squashAmp:0.05,hp:1,glow:true,ttl:3200,spawnedAt:performance.now()}; g.targets.push(t) }
 function rid(){ return Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2) }
 
 function updateScare(g,dte){
@@ -365,7 +355,7 @@ function updateScare(g,dte){
   const s=g.scare;
   if(!s.active) return;
   if(s.phase==='darken'){ s.alpha=Math.min(1,s.alpha+dte/Math.max(1,s.fadeInMs)); if(s.alpha>=1){ s.phase='dark'; s.hold=0 } }
-  else if(s.phase==='dark'){ s.hold+=dte; if(s.hold>=s.holdTarget){ s.phase='reveal'; s.reveal=0; roarSound(2.4); g.shakeTime=900; g.shakeMag=8 } }
+  else if(s.phase==='dark'){ s.hold+=dte; if(s.hold>=s.holdTarget){ s.phase='reveal'; s.reveal=0; roarSound(2.4); g.shakeTime=900; g.shakeMag=9 } }
   else if(s.phase==='reveal'){ s.reveal+=dte; if(s.reveal>Math.max(200,s.revealMs)){ s.phase='lighten' } }
   else if(s.phase==='lighten'){ s.alpha=Math.max(0,s.alpha-dte/Math.max(1,s.fadeOutMs)); if(s.alpha<=0){ s.active=false; s.phase='idle'; s.done=true } }
 }
@@ -381,37 +371,37 @@ function clearGlow(g){ g.targets.forEach(t=>t.glow=false); g.glowId=null; g.blac
 function update(dt,g){
   const dte=Math.min(34,dt)*(g.timescale||1);
   g.t+=dte; g.timeLeft=Math.max(0,g.timeLeft-dte/1000);
-  if(!g.frenzy && g.timeLeft<=30){ g.frenzy=true; g.mult=2; g.spawnInt=Math.max(240,g.spawnInt*0.58); modeEl.textContent='x2' }
+  if(!g.frenzy && g.timeLeft<=30){ g.frenzy=true; g.mult=2; g.spawnInt=Math.max(200,g.spawnInt*0.56); modeEl.textContent='x2' }
   if(g.timeLeft<=0) g.running=false;
-  if(g.t-g.lastAccel>g.accelEach){ g.lastAccel=g.t; g.spawnInt=Math.max(g.minSpawn,g.spawnInt*0.9) }
-  if(!g.telegraphed && g.nextBossAt!==Infinity && g.t>g.nextBossAt-2200){ g.telegraphed=true; g.telegraphTimer=2200; lowRoar(1.2) }
+  if(g.t-g.lastAccel>g.accelEach){ g.lastAccel=g.t; g.spawnInt=Math.max(g.minSpawn,g.spawnInt*0.88) }
+  if(!g.telegraphed && g.nextBossAt!==Infinity && g.t>g.nextBossAt-2000){ g.telegraphed=true; g.telegraphTimer=2000; lowRoar(1.2) }
   if(g.telegraphTimer>0) g.telegraphTimer=Math.max(0,g.telegraphTimer-dte);
   if(g.blackoutMs>0){ g.blackoutMs-=dte; if(g.blackoutMs<=0) clearGlow(g) }
   else if(g.t-g.lastSpawn>g.spawnInt){
     g.lastSpawn=g.t;
     const r=Math.random();
-    if(r<0.65) spawnZombie(g);
-    else if(r<0.85) spawnBat(g);
-    else if(r<0.95) spawnGhost(g);
+    if(r<0.68) spawnZombie(g);
+    else if(r<0.88) spawnBat(g);
+    else if(r<0.96) spawnGhost(g);
     if(g.nextBossAt!==Infinity && g.t>g.nextBossAt) spawnBoss(g);
-    if(Math.random()<0.06) startBlackout(g);
+    if(Math.random()<0.05) startBlackout(g);
   }
   if(!g.specialSpawned && g.t>10000) spawnSprinter(g);
   if(g.bossIntro){ const age=(performance.now()-g.bossIntro.t)/1000; g.timescale=Math.min(1,0.35+age*0.35); if(age>2.2){ g.timescale=1; g.bossIntro=null } }
   for(const t of g.targets){
     t.x += t.vx * dte;
-    t.x += (0.015*Math.sin((performance.now()+t.x)*0.002)) * dte;
+    t.x += (0.018*Math.sin((performance.now()+t.x)*0.002)) * dte;
     if(t.kind==='sprinter' && performance.now()-t.spawnedAt>t.ttl) t.dead=true;
-    if((t.kind==='zombie'||t.kind==='boss'||t.kind==='sprinter') && t.canSwap && Math.random()< (isCoarse?0.0025:0.0015) ){
+    if((t.kind==='zombie'||t.kind==='boss'||t.kind==='sprinter') && t.canSwap && Math.random()< (isCoarse?0.004:0.002) ){
       const L=lanes3(); t.y=L[Math.floor(Math.random()*L.length)]; t.canSwap=false
     }
-    if(t.x<-200||t.x>W+200||t.y<-160||t.y>H+160) t.dead=true
+    if(t.x<-220||t.x>W+220||t.y<-160||t.y>H+160) t.dead=true
   }
   g.targets=g.targets.filter(z=>!z.dead);
   if(g.shakeTime>0){ g.shakeTime-=dte; if(g.shakeTime<=0) g.shakeMag=0 }
-  if(g.lastHitTime && performance.now()-g.lastHitTime>2000){ g.combo=0; g.lastHitTime=0; comboFlame=0 }
+  if(g.lastHitTime && performance.now()-g.lastHitTime>1800){ g.combo=0; g.lastHitTime=0; comboFlame=0 }
   if(g.glowId && !g.targets.some(t=>t.id===g.glowId)){ clearGlow(g) }
-  g.heat=Math.max(0, g.heat - dte*0.06);
+  g.heat=Math.max(0, g.heat - dte*0.065);
   if(g.jammed && performance.now()>=g.jamUntil){ g.jammed=false; g.heat=70; addFloat("READY", W/2, H*0.28, "rgb(180,240,180)", 900) }
   updateScare(g,dte);
   updateFx(dte);
@@ -432,16 +422,15 @@ function render(g){
       if(bossImg.complete){
         const iw=bossImg.naturalWidth||bossImg.width||512;
         const ih=bossImg.naturalHeight||bossImg.height||512;
-        const sx0=0;
-        const sw=iw;
-        const sy0=Math.floor(ih*0.12);
-        const sh=Math.floor(ih*0.40);
+        const sx0=0, sw=iw;
+        const sy0=Math.floor(ih*0.10);
+        const sh=Math.floor(ih*0.44);
         const aspect=sh/sw;
-        const dh=H*2.0;
+        const dh=H*2.3;
         const dw=dh/aspect;
-        const shake=20*(0.6+Math.random()*0.4);
+        const shake=26*(0.6+Math.random()*0.4);
         const dx=(W-dw)/2 + shake*(Math.random()-0.5);
-        const dy=H*0.00 + shake*(Math.random()-0.5);
+        const dy=H*-0.06 + shake*(Math.random()-0.5);
         ctx.drawImage(bossImg, sx0, sy0, sw, sh, dx, dy, dw, dh);
       }
       const vg=ctx.createRadialGradient(W/2, H*0.35, 30, W/2, H*0.35, Math.max(W,H)*0.6);
@@ -503,13 +492,13 @@ function shootAt(g,mx,my){
         addFloat("+"+val, z.x, z.y-z.h*0.6, "rgb(255,200,120)", 1400);
         hitSound("body");
       }
-      const before=z.hp||6; z.hp=before-1; if(before!==z.hp) lowRoar(1.1); if(z.hp<=0){ z.dead=true; spawnConfetti(z.x, z.y-z.h*0.5, {big:true,gold:true,count:120}) }
+      const before=z.hp||6; z.hp=before-1; if(before!==z.hp) lowRoar(1.1); if(z.hp<=0){ z.dead=true; spawnConfetti(z.x, z.y-z.h*0.5, {big:true,gold:true,count:140}) }
       if(glow){ clearGlow(g); if(Math.random()<0.08){ g.timeLeft=Math.min(90,g.timeLeft+5); addFloat("+5s", z.x, z.y-90, "rgb(120,220,255)", 1400) } const m=loadMission(); if(!m.done){ m.hitGlow++; if(m.hitGlow>=m.goalGlow){ m.done=true; addFloat("MISSION!", W/2, H*0.3, "rgb(255,230,120)", 1500); rankUpSound() } saveMission(m) } }
     } else if(z.kind==='sprinter'){
       if(pick.pump){
         val = 25*g.mult;
         spawnPop(pick.px||z.x,pick.py||z.y);
-        spawnConfetti(pick.px||z.x,pick.py||z.y,{big:true,gold:true,count:100});
+        spawnConfetti(pick.px||z.x,pick.py||z.y,{big:true,gold:true,count:110});
         addFloat("+"+val, (pick.px||z.x), (pick.py||z.y)-16, "rgb(255,230,120)", 1500);
         hitSound("pumpGlow");
       }else{
@@ -522,7 +511,7 @@ function shootAt(g,mx,my){
       if(pick.pump){
         val=(glow?10:2)*g.mult;
         spawnPop(pick.px,pick.py);
-        spawnConfetti(pick.px,pick.py,{count:36,gold:glow});
+        spawnConfetti(pick.px,pick.py,{count:32,gold:glow});
         addFloat("+"+val, pick.px, pick.py-16, glow?"rgb(120,220,255)":"rgb(255,230,120)", 1400);
         hitSound(glow?"pumpGlow":"pump");
       } else {
@@ -535,7 +524,7 @@ function shootAt(g,mx,my){
     }
   }
   g.score+=val;
-  if(val>0){ g.combo+=1; g.lastHitTime=performance.now(); if(g.combo>=5){ comboFlame=Math.min(1200, comboFlame+200) } }
+  if(val>0){ g.combo+=1; g.lastHitTime=performance.now(); if(g.combo>=6){ comboFlame=Math.min(1200, comboFlame+180) } }
   else{ g.combo=0; comboFlame=0 }
   updateRank(g);
   drawHUD(g);
@@ -646,7 +635,7 @@ wrap.addEventListener('pointerdown', async (e)=>{
   mouseX=x; mouseY=y;
   setGun(mouseX,mouseY);
   const now=performance.now();
-  if(isCoarse && (now-lastTap)<240 && Math.hypot(x-lastTapX,y-lastTapY)<28){
+  if(isCoarse && (now-lastTap)<200 && Math.hypot(x-lastTapX,y-lastTapY)<22){
     autoAimShoot(game,x,y);
     lastTap=0;
     e.preventDefault();
@@ -693,7 +682,17 @@ function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','
 let wallet=null;
 function abbrev(w){return w?w.slice(0,4)+'…'+w.slice(-4):''}
 function currentWallet(){ return wallet?abbrev(wallet):null }
-async function connectWallet(){ try{ const provider=window.solana||window.phantom?.solana; if(!provider){ walletBox.textContent='Phantom not found'; return } const res=await provider.connect({onlyIfTrusted:false}); wallet=res.publicKey.toString(); walletBox.textContent='Connected: '+abbrev(wallet) }catch(e){ walletBox.textContent='Wallet error' } }
+async function connectWallet(){
+  try{
+    const provider=window?.solana?.isPhantom?window.solana:(window.phantom?.solana||window.solana);
+    if(!provider){ walletBox.textContent='Phantom not found'; return }
+    const res=await provider.connect({onlyIfTrusted:false});
+    wallet=res.publicKey?.toString?.()||null;
+    walletBox.textContent=wallet?('Connected: '+abbrev(wallet)):'Wallet error';
+  }catch(e){
+    walletBox.textContent='Wallet error';
+  }
+}
 connectBtn.onclick=()=>connectWallet();
 
 function shareNow(){ const url=encodeURIComponent(location.href); const rank=game?game.rank:'Rookie'; const sc=encodeURIComponent(`I scored ${game?game.score:0} (Rank: ${rank}) on 🎯 Pump Gyatt!`); window.open(`https://twitter.com/intent/tweet?text=${sc}&url=${url}`,'_blank') }
@@ -702,11 +701,11 @@ shareBtn.onclick=()=>shareNow();
 async function fetchGlobalBoard(){
   if(!API_BASE){ gBoardEl.innerHTML='<li>API not set</li>'; return }
   try{
-    const r=await fetch(API_BASE+'/scores/top?limit=20',{headers:{'Accept':'application/json'}});
+    const r=await fetch(API_BASE+'/scores/top?limit=20',{headers:{'Accept':'application/json'},mode:'cors',cache:'no-store',keepalive:false});
     if(!r.ok) throw 0;
     const j=await r.json();
     const rows = Array.isArray(j)?j:(j.scores||j.data||[]);
-    if(!rows.length){ gBoardEl.innerHTML='<li>No scores yet</li>'; return }
+    if(!rows || !rows.length){ gBoardEl.innerHTML='<li>No scores yet</li>'; return }
     gBoardEl.innerHTML = rows.map((it,i)=>`<li>#${i+1} ${escapeHtml((it.name||it.wallet||'guest').toString().slice(0,12))} — ${it.score||it.points||0}</li>`).join('');
   }catch(e){
     gBoardEl.innerHTML='<li>Unable to load global leaderboard</li>';
@@ -715,13 +714,12 @@ async function fetchGlobalBoard(){
 async function submitGlobalScore(score){
   if(!API_BASE || !wallet) return;
   try{
-    await fetch(API_BASE+'/scores',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:wallet,wallet,score})});
+    await fetch(API_BASE+'/scores',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},mode:'cors',body:JSON.stringify({name:wallet,wallet,score})});
   }catch(e){}
 }
 
 function boot(){
   fit(); startOverlay.style.display='flex';
-  if(mobileTip) mobileTip.style.display = isCoarse?'block':'none';
   fetchGlobalBoard();
   if(!rafId) rafId=requestAnimationFrame(loop)
 }
