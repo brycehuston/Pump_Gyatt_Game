@@ -181,14 +181,19 @@ function spawnPop(x,y){ for(let i=0;i<9;i++) pops.push({x,y,vx:(Math.random()*2-
 function spawnConfetti(x,y,c=22){ for(let i=0;i<c;i++){ confetti.push({x,y,vx:(Math.random()*2-1)*3.2,vy:-2.2-Math.random()*3.4,ay:0.12,rot:Math.random()*6.28,vr:(Math.random()*0.5-0.25),size:2+Math.random()*3.5,life:900+Math.random()*700,t:0,h:Math.floor(Math.random()*360)}) } }
 function spawnGoldConfetti(x,y,c=50){ for(let i=0;i<c;i++){ const hue=45+Math.random()*15; confetti.push({x,y,vx:(Math.random()*2-1)*3.8,vy:-3.0-Math.random()*4.2,ay:0.12,rot:Math.random()*6.28,vr:(Math.random()*0.6-0.3),size:3+Math.random()*4.5,life:1200+Math.random()*1200,t:0,h:hue}) } }
 function addFloat(text,x,y,fill='rgb(255,230,120)',lifeMs=1400){ if(!Number.isFinite(x)||!Number.isFinite(y)) return; floats.push({text,x,y,vy:-0.22,life:lifeMs,t:0,fill}) }
+// GOOD (drop this whole block in your file)
 function updateFx(dt){
-  for(const p of pops){ p.t+=dt; p.x+=p.vx; p.y+=p.vy; p.vy+=0.018 }
-  for(let i=pops.length-1;i>=0;i--) if(pops[i].t>pops[i].life) pops.splice(i,1);
-  for(const fl of floats){ fl.t+=dt; fl.y+=fl.vy }
-  for(let i=floats.length-1;i>=0;i--) if(floats[i].t>fllife) floats.splice(i,1);
-  for(const cf of confetti){ cf.t+=dt; cf.vy+=cf.ay; cf.x+=cf.vx; cf.y+=cf.vy; cf.rot+=cf.vr }
-  for(let i=confetti.length-1;i>=0;i--){ const cf=confetti[i]; if(cf.t>cf.life || cf.y>H-40) confetti.splice(i,1) }
-  if(rankFx>0) rankFx=Math.max(0,rankFx-dt); if(comboFlame>0) comboFlame=Math.max(0,comboFlame-dt*0.8)
+  for (const p of pops){ p.t+=dt; p.x+=p.vx; p.y+=p.vy; p.vy+=0.018 }
+  for (let i=pops.length-1;i>=0;i--) if (pops[i].t>pops[i].life) pops.splice(i,1);
+
+  for (const fl of floats){ fl.t+=dt; fl.y+=fl.vy }
+  for (let i=floats.length-1;i>=0;i--) if (floats[i].t > floats[i].life) floats.splice(i,1);
+
+  for (const cf of confetti){ cf.t+=dt; cf.vy+=cf.ay; cf.x+=cf.vx; cf.y+=cf.vy; cf.rot+=cf.vr }
+  for (let i=confetti.length-1;i>=0;i--){ const cf=confetti[i]; if (cf.t>cf.life || cf.y>H-40) confetti.splice(i,1) }
+
+  if (rankFx>0) rankFx=Math.max(0,rankFx-dt);
+  if (comboFlame>0) comboFlame=Math.max(0,comboFlame-dt*0.8);
 }
 
 let parX=0, parY=0, stars=[];
