@@ -57,7 +57,8 @@
   #gameWrap{position:relative;aspect-ratio:16/9;width:100%;max-height:85svh;overflow:hidden;touch-action:none;cursor:none;perspective:900px;border-radius:16px;border:1px solid var(--stroke);background:#0b0b12;box-shadow:0 40px 140px rgba(0,0,0,.6)}
   #game{width:100%;height:100%;display:block;background:#0b0b12}
   #gun{position:absolute;left:50%;top:100%;width:200px;opacity:.95;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6));user-select:none;display:none;transform:translate(-50%,-100%);transform-origin:50% 100%}
-  /* only DOM curtain, no canvas drawing */
+
+  /* single DOM curtain overlay (prevents duplicate frame) */
   #gameWrap .curtain{position:absolute;inset:0;pointer-events:none;z-index:2;width:100%;height:100%;object-fit:fill}
 
   /* overlays */
@@ -129,7 +130,6 @@
             <button id="shareOverBtn" class="over-btn">Share on X</button>
             <button id="muteOverBtn" class="over-btn">Toggle Mute</button>
           </div>
-          <div style="margin-top:10px;color:#bdbdbd;font-size:12px">Tip: double-tap to enter/exit fullscreen on mobile.</div>
         </div>
       </div>
 
@@ -267,7 +267,7 @@ function clamp(v,a,b){ return Math.max(a,Math.min(b,v)) }
 const pops=[], floats=[], confetti=[]; let rankFx=0, rankText="", comboFlame=0;
 function spawnPop(x,y){ for(let i=0;i<9;i++) pops.push({x,y,vx:(Math.random()*2-1)*2.0,vy:(Math.random()*2-1)*1.8-0.5,r:2+Math.random()*2,life:220,t:0,h:28+Math.random()*10}) }
 function spawnConfetti(x,y,c=22){ for(let i=0;i<c;i++){ confetti.push({x,y,vx:(Math.random()*2-1)*3.2,vy:-2.2-Math.random()*3.4,ay:0.12,rot:Math.random()*6.28,vr:(Math.random()*0.5-0.25),size:2+Math.random()*3.5,life:900+Math.random()*700,t:0,h:Math.floor(Math.random()*360)}) } }
-function spawnGoldConfetti(x,y,c=50){ for(let i=0;i<c;i++){ const hue=45+Math.random()*15; confetti.push({x,y,vx:(Math.random()*2-1)*3.8,vy:-3.0-Math.random()*4.2,ay:0.12,rot:Math.random()*6.28,vr:(Math.random()*0.6-0.3),size:3+Math.random()*4.5,life:1200+Math.random()*1200,t:0,h:hue}) } }
+function spawnGoldConfetti(x,y,c=50){ for(let i=0;i<c;i++){ const hue=45+Math.random()*15; confetti.push({x,y,vx:(Math.random()*2-1)*3.8,vy:-3.0-Math.random()*4.2,ay:0.12,rot:Math.random()*6.28,vr:(Math.random()*0.6-0.3),size:3+Math.random()*4.5,life:1200+Math.random()*1200,t:0,hue}) } }
 function addFloat(text,x,y,fill='rgb(255,230,120)',lifeMs=1400){ if(!Number.isFinite(x)||!Number.isFinite(y)) return; floats.push({text,x,y,vy:-0.22,life:lifeMs,t:0,fill}) }
 function updateFx(dt){
   for (const p of pops){ p.t+=dt; p.x+=p.vx; p.y+=p.vy; p.vy+=0.018 }
@@ -551,12 +551,17 @@ function render(g){
       if(s.flash>0){ const a=Math.max(0, s.flash/260); ctx.fillStyle=`rgba(255,255,255,${0.9*a})`; ctx.fillRect(0,0,W,H) }
     }
   }
-  if(g.telegraphTimer>0){ const a = 0.25 + 0.25*Math.sin(performance.now()/100); ctx.fillStyle=`rgba(180,0,0,${a})`; ctx.fillRect(0,0,W,H); ctx.save(); ctx.fillStyle='#ff4a4a'; ctx.globalAlpha=0.9; ctx.font=`900 ${Math.round(56*RES)}px system-ui, Arial`; ctx.textAlign='center'; ctx.fillText("BOSS", W/2, 110*RES); ctx.restore() }
+  if(g.telegraphTimer>0){
+    const a = 0.25 + 0.25*Math.sin(performance.now()/100);
+    ctx.fillStyle=`rgba(180,0,0,${a})`; ctx.fillRect(0,0,W,H);
+    ctx.save(); ctx.fillStyle='#ff4a4a'; ctx.globalAlpha=0.9;
+    ctx.font=`900 ${Math.round(56*RES)}px system-ui, Arial`; ctx.textAlign='center';
+    ctx.fillText("BOSS", W/2, 150*RES); /* moved lower so curtain doesn’t hide it */
+    ctx.restore();
+  }
   for(const cf of confetti){
     const a=Math.max(0,1-(cf.t/cf.life));
-    ctx.save();
-    ctx.translate(cf.x,cf.y);
-    ctx.rotate(cf.rot);
+    ctx.save(); ctx.translate(cf.x,cf.y); ctx.rotate(cf.rot);
     ctx.fillStyle=`hsla(${cf.h},90%,60%,${a})`;
     ctx.fillRect(-cf.size*0.5,-cf.size*0.5,cf.size,cf.size*1.6);
     ctx.restore();
@@ -568,7 +573,7 @@ function render(g){
 function drawFXLayer(){ ctx.font=`900 ${Math.round(28*RES)}px Inter, system-ui, Arial`; ctx.textAlign='center'; ctx.textBaseline='middle'; for(const f of floats){ const a=Math.max(0,1-(f.t/f.life)); ctx.save(); ctx.globalAlpha=a; ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=8; ctx.strokeStyle='rgba(0,0,0,0.85)'; ctx.lineWidth=4; ctx.strokeText(f.text,f.x,f.y); ctx.fillStyle=f.fill; ctx.fillText(f.text,f.x,f.y); ctx.restore() } if(rankFx>0){ ctx.save(); const a=0.3+0.3*Math.sin(performance.now()/120); ctx.globalAlpha=a; ctx.fillStyle='#ffef9a'; ctx.font=`900 ${Math.round(48*RES)}px Inter, system-ui, Arial`; ctx.textAlign='center'; ctx.fillText(rankText, W/2, 90*RES); ctx.restore() } }
 function drawComboFlames(){ if(comboFlame<=0) return; const a=Math.min(1,comboFlame/600); const r=(60+20*Math.sin(performance.now()/90))*RES; const g=ctx.createRadialGradient(mouseX,mouseY,4,mouseX,mouseY,r); g.addColorStop(0,`rgba(255,190,90,${0.45*a})`); g.addColorStop(1,`rgba(255,90,0,0)`); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(mouseX,mouseY,r,0,Math.PI*2); ctx.fill() }
 
-/* ========= Input / crosshair + double-tap fullscreen ========= */
+/* ========= Input / crosshair ========= */
 let mouseX=0,mouseY=0;
 function drawCrosshair(){ const r=5*RES; ctx.save(); ctx.translate(mouseX,mouseY); ctx.strokeStyle='rgba(255,235,150,0.95)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-9*RES,0); ctx.lineTo(-4*RES,0); ctx.moveTo(4*RES,0); ctx.lineTo(9*RES,0); ctx.moveTo(0,-9*RES); ctx.lineTo(0,-4*RES); ctx.moveTo(0,4*RES); ctx.lineTo(0,9*RES); ctx.stroke(); ctx.restore() }
 function setGun(x,y){
@@ -583,22 +588,12 @@ wrap.addEventListener('pointerenter',()=>{ if(!isCoarse) gunImg.style.display='b
 wrap.addEventListener('pointerleave',()=>{ if(!isCoarse) gunImg.style.display='none' });
 wrap.addEventListener('pointermove',e=>{ const r=wrap.getBoundingClientRect(); mouseX=e.clientX-r.left; mouseY=e.clientY-r.top; setGun(mouseX,mouseY) });
 
-let lastTapTime=0,lastTapX=0,lastTapY=0;
-async function handlePointerDown(e){
+wrap.addEventListener('pointerdown',async(e)=>{
   await resumeAudio();
-  // Mobile double-tap -> toggle fullscreen (prevents accidental double-shots)
-  if(isCoarse){
-    const now=e.timeStamp, dt=now-lastTapTime;
-    const dx=Math.abs(e.clientX-lastTapX), dy=Math.abs(e.clientY-lastTapY);
-    lastTapTime=now; lastTapX=e.clientX; lastTapY=e.clientY;
-    if(dt<300 && dx<40 && dy<40){ lastTapTime=0; await toggleFullscreen(wrap); return; }
-  }
   if(!game) return;
   if(game.scare.active && game.scare.phase==='reveal'){ shootScare(game,mouseX,mouseY); return }
-  if(game.running) shootAt(game,mouseX,mouseY)
-}
-wrap.addEventListener('pointerdown',handlePointerDown);
-wrap.addEventListener('dblclick',()=>toggleFullscreen(wrap)); // desktop
+  if(game.running) shootAt(game,mouseX,mouseY);
+});
 
 function eyeToScreen(draw,eye){
   if(!draw) return {x:-9999,y:-9999};
@@ -678,52 +673,9 @@ function rankUpSound(){ blip(440,880,0.22,0.16,"triangle") }
 function bigPopSound(){ blip(1600,260,0.11,0.35,"square"); blip(1200,320,0.14,0.25,"triangle") }
 function gameOverSound(){ blip(600,220,0.35,0.18,"sawtooth"); setTimeout(()=>blip(440,0,0.28,0.12,"triangle"),120) }
 
-/* ========= Scare helpers ========= */
-let __roarIR=null;
-function makeRoarCurve(amount){ const n=44100, curve=new Float32Array(n), k=typeof amount==='number'?amount:36, deg=Math.PI/180; for(let i=0;i<n;i++){ const x=i*2/n-1; curve[i]=(3+k)*x*20*deg/(Math.PI+k*Math.abs(x)) } return curve }
-function makeRoarImpulse(ctx, seconds=0.22, decay=2.0){ const len=(seconds*ctx.sampleRate)|0, buf=ctx.createBuffer(2,len,ctx.sampleRate); for(let ch=0; ch<2; ch++){ const d=buf.getChannelData(ch); for(let i=0;i<len;i++){ const t=i/len; d[i]=(Math.random()*2-1)*Math.pow(1-t,decay) } } return buf }
-async function roarSound(power=2){
-  if(muted) return;
-  try{
-    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-    if(audioCtx.state==='suspended'){ try{ await audioCtx.resume() }catch{} }
-    if(!__roarIR) __roarIR=makeRoarImpulse(audioCtx,0.25,2.2);
-    const t0=audioCtx.currentTime, stopAt=t0+1.05;
-    const out=audioCtx.createGain(); out.gain.value=Math.min(1,0.9*power);
-    const pan=audioCtx.createStereoPanner(); pan.pan.value=(Math.random()*0.4-0.2);
-    const comp=audioCtx.createDynamicsCompressor(); comp.threshold.value=-16; comp.knee.value=14; comp.ratio.value=16; comp.attack.value=0.004; comp.release.value=0.18;
-    const env=audioCtx.createGain(); env.gain.value=0.0001;
-    const shaper=audioCtx.createWaveShaper(); shaper.curve=makeRoarCurve(48);
-    const dry=audioCtx.createGain(); dry.gain.value=0.7;
-    const wet=audioCtx.createConvolver(); wet.buffer=__roarIR;
-    const wetG=audioCtx.createGain(); wetG.gain.value=0.32;
-    const noiseBuf=audioCtx.createBuffer(1,(1.2*audioCtx.sampleRate)|0,audioCtx.sampleRate);
-    const nb=noiseBuf.getChannelData(0);
-    for(let i=0;i<nb.length;i++){ const t=i/nb.length; nb[i]=(Math.random()*2-1)*Math.pow(1-t,0.7) }
-    const n=audioCtx.createBufferSource(); n.buffer=noiseBuf;
-    const hp=audioCtx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=60; hp.Q.value=0.7;
-    const shelf=audioCtx.createBiquadFilter(); shelf.type='lowshelf'; shelf.frequency.value=140; shelf.gain.value=10;
-    const form1=audioCtx.createBiquadFilter(); form1.type='peaking'; form1.frequency.value=300; form1.Q.value=0.9; form1.gain.value=9;
-    const form2=audioCtx.createBiquadFilter(); form2.type='peaking'; form2.frequency.value=520; form2.Q.value=1.0; form2.gain.value=5;
-    const notch=audioCtx.createBiquadFilter(); notch.frequency.value=2500; notch.Q.value=4; notch.type='notch';
-    const lp=audioCtx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=1000; lp.Q.value=0.8;
-    const sub=audioCtx.createOscillator(); sub.type='sine'; sub.frequency.setValueAtTime(70,t0); sub.frequency.exponentialRampToValueAtTime(52,t0+0.55);
-    const subG=audioCtx.createGain(); subG.gain.value=0.55*power;
-    const growl=audioCtx.createOscillator(); growl.type='sawtooth'; growl.frequency.setValueAtTime(140,t0); growl.frequency.exponentialRampToValueAtTime(90,t0+0.6);
-    const growlG=audioCtx.createGain(); growlG.gain.value=0.18*power;
-    const lfo=audioCtx.createOscillator(); lfo.type='triangle'; lfo.frequency.value=7;
-    const lfoD=audioCtx.createGain(); lfoD.gain.value=0.25; lfo.connect(lfoD); lfoD.connect(subG.gain); lfoD.connect(form1.gain);
-    n.connect(hp); hp.connect(shelf); shelf.connect(form1); form1.connect(form2); form2.connect(notch); notch.connect(lp); lp.connect(shaper);
-    sub.connect(subG); growl.connect(growlG); shaper.connect(env); subG.connect(env); growlG.connect(env);
-    env.connect(comp); comp.connect(dry); comp.connect(wet); dry.connect(pan); wet.connect(wetG); wetG.connect(pan); pan.connect(audioCtx.destination);
-    env.gain.setValueAtTime(0.0001,t0); env.gain.exponentialRampToValueAtTime(1.0*power,t0+0.03); env.gain.exponentialRampToValueAtTime(0.0001,stopAt);
-    n.start(t0); sub.start(t0); growl.start(t0); lfo.start(t0); n.stop(stopAt); sub.stop(stopAt); growl.stop(stopAt); lfo.stop(stopAt+0.01);
-  }catch{}
-}
-
 /* ========= Game state ========= */
 function start(){ if(rafId){ cancelAnimationFrame(rafId); rafId=null } overlay.style.display='none'; startOverlay.style.display='none'; pops.length=0; floats.length=0; confetti.length=0; comboFlame=0; scareDraw=null; game=newGame(); renderMission(); rankEl.textContent=game.rank; modeEl.textContent='x1'; drawHUD(game); restartMusic(); last=0; rafId=requestAnimationFrame(loop) }
-function endSummary(g){ let bonus=0; if(g.misses===0 && g.score>0){ bonus=Math.max(10,Math.round(g.score*0.1)); g.score+=bonus } const bonusText=bonus?` • No-Miss Bonus +${bonus}`:''; overScoreEl.textContent=`Score: ${g.score}${bonusText} • Misses: ${g.misses} • Rank: ${g.rank}`; pauseMusic(); gameOverSound(); overlay.style.display='flex' }
+function endSummary(g){ let bonus=0; if(g.misses===0 && g.score>0){ bonus=Math.max(10,Math.round(g.score*0.1)); g.score+=bonus } const bonusText=bonus?` • No-Miss Bonus +${bonus}`:''; overScoreEl.textContent=`Score: ${g.score}${bonusText} • Misses: ${g.misses} • Rank: ${g.rank}`; pauseMusic(); gameOverSound(); overlay.style.display='flex'; saveLocalScore(g.score) }
 
 let last=0, rafId=null;
 function loop(ts){ try{ if(!last) last=ts; const dt=Math.min(34,Math.max(0,ts-last)); last=ts; if(game){ if(game.running) update(dt,game); else updateFx(dt); render(game); if(!game.running && !game.ended){ game.ended=true; endSummary(game) } } }catch(e){ console.error('loop error',e) } rafId=requestAnimationFrame(loop) }
@@ -773,43 +725,120 @@ async function withInputShield(fn){
 </script>
 
 <script>
-/* ===== Global leaderboard hooks (optional server) ===== */
-const API_URL = ""; // set your API base to enable global board
+/* ===== Leaderboard + Wallet (Vercel rewrite friendly) =====
+   Your vercel.json rewrites:
+   /top     -> http://72.60.67.220:8787/top
+   /submit  -> http://72.60.67.220:8787/submit
+   So we fetch('/top') and fetch('/submit') directly.
+*/
+const USE_LOCAL_FALLBACK = true; // keep mini local board if API hiccups
 
-function phantomProvider(){ const p=window.solana||window.phantom?.solana; if(p&&(p.isPhantom||p.isBraveWallet||p.isSolflare||p.isBackpack)) return p; return null }
-async function ensureWalletConnected(){ try{ const prov=phantomProvider(); if(!prov) return null; if(!window.__PG_CONNECTED__){ const r=await prov.connect({onlyIfTrusted:false}); window.wallet=r.publicKey.toString(); window.__PG_CONNECTED__=true; const box=document.getElementById("walletBox"); if(box) box.textContent="Connected: "+window.wallet } return prov }catch{ return null } }
-async function signMessageWithPhantom(message){ const prov=await ensureWalletConnected(); if(!prov||!prov.signMessage) return null; const enc=new TextEncoder(); const signed=await prov.signMessage(enc.encode(message),"utf8"); return { signature: signed.signature, pubkey: prov.publicKey.toString() } }
-function bs58Encode(u8){ const A="123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"; const B=A.length; const x=[...u8]; let d=[0]; for(let i=0;i<x.length;i++){ let c=x[i]; for(let j=0;j<d.length;++j){ const v=d[j]*256+c; d[j]=v%B; c=(v/B)|0 } while(c){ d.push(c%B); c=(c/B)|0 } } let z=0; for(let k=0;k<x.length&&x[k]===0;k++) z++; let s=""; for(let q=0;q<z;q++) s+="1"; for(let w=d.length-1;w>=0;w--) s+=A[d[w]]; return s }
-
-async function submitGlobalScore(score){
+/* ---- Phantom provider + connect ---- */
+function phantomProvider(){
   try{
-    if(!Number.isFinite(score)||score<=0||!API_URL) return;
-    const ts=Date.now(); const message=`PumpGyatt|${Math.floor(score)}|${ts}`;
-    const sigObj=await signMessageWithPhantom(message); if(!sigObj) return;
-    const sigBase58=bs58Encode(sigObj.signature);
-    const body={pubkey:sigObj.pubkey,score:Math.floor(score),ts,sig:sigBase58};
-    await fetch(API_URL+"/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(r=>r.json()).catch(()=>null);
-    await renderGlobalBoard();
+    if (window.solana?.isPhantom) return window.solana;
+    if (window.phantom?.solana?.isPhantom) return window.phantom.solana;
   }catch{}
+  return null;
+}
+async function ensureWalletConnected(){
+  try{
+    const prov = phantomProvider();
+    if (!prov) { if (walletBox) walletBox.textContent = 'Phantom not found'; return null; }
+    const res = await prov.connect({ onlyIfTrusted: false });
+    if (res?.publicKey) { setWallet(res.publicKey.toString()); return prov; }
+  }catch(e){ if (walletBox) walletBox.textContent = 'Wallet error'; }
+  return null;
+}
+async function signMessageWithPhantom(message){
+  const prov = await ensureWalletConnected();
+  if (!prov?.signMessage) return null;
+  const enc = new TextEncoder();
+  const signed = await prov.signMessage(enc.encode(message), "utf8");
+  return { signature: signed.signature, pubkey: prov.publicKey.toString() };
+}
+function bs58Encode(u8){
+  const A="123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz", B=A.length;
+  const x=[...u8]; let d=[0];
+  for (let i=0;i<x.length;i++){ let c=x[i];
+    for(let j=0;j<d.length;++j){ const v=d[j]*256+c; d[j]=v%B; c=(v/B)|0 }
+    while(c){ d.push(c%B); c=(c/B)|0 }
+  }
+  let z=0; for(let k=0;k<x.length&&x[k]===0;k++) z++;
+  let s=""; for(let q=0;q<z;q++) s+="1"; for(let w=d.length-1;w>=0;w--) s+=A[d[w]];
+  return s;
+}
+
+/* ---- Local fallback board ---- */
+const LOCAL_KEY='pg_local_board';
+function saveLocalScore(score){
+  try{
+    const items=JSON.parse(localStorage.getItem(LOCAL_KEY)||'[]');
+    items.push({ts:Date.now(), score});
+    items.sort((a,b)=>b.score-a.score);
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(items.slice(0,20)));
+    renderLocalBoard();
+  }catch{}
+}
+function renderLocalBoard(){
+  try{
+    const items=JSON.parse(localStorage.getItem(LOCAL_KEY)||'[]');
+    if(!items.length){ if(globalStatus) globalStatus.textContent=""; globalBoard.innerHTML=""; return }
+    if(globalStatus) globalStatus.textContent="Local leaderboard";
+    globalBoard.innerHTML=items.map((x,i)=>`<li>#${i+1} — ${x.score}</li>`).join("");
+  }catch{}
+}
+
+/* ---- Remote board via your rewrites ---- */
+async function submitGlobalScore(score){
+  if(!Number.isFinite(score) || score<=0) return;
+  try{
+    const ts = Date.now();
+    const message = `PumpGyatt|${Math.floor(score)}|${ts}`;
+    const sigObj = await signMessageWithPhantom(message);
+    if(!sigObj) return;
+    const sigBase58 = bs58Encode(sigObj.signature);
+    const body = { pubkey: sigObj.pubkey, score: Math.floor(score), ts, sig: sigBase58 };
+
+    await fetch('/submit', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    }).then(r=>r.json()).catch(()=>null);
+
+    await renderGlobalBoard();
+  }catch(e){ /* ignore */ }
 }
 
 async function renderGlobalBoard(){
   try{
-    if(!globalBoard||!globalStatus||!API_URL){ globalStatus.textContent = API_URL ? "" : "Set API_URL to enable leaderboard"; return; }
-    globalStatus.textContent="Loading…";
-    const res=await fetch(API_URL+"/top").then(r=>r.json()).catch(()=>null);
-    if(!res||!res.ok){ globalStatus.textContent="Unable to load global leaderboard"; globalBoard.innerHTML=""; return }
-    globalStatus.textContent=""; globalBoard.innerHTML=res.items.map((x,i)=>`<li>#${i+1} ${x.pubkey.slice(0,4)}…${x.pubkey.slice(-4)} — ${x.best}</li>`).join("");
-  }catch{ if(globalStatus){ globalStatus.textContent="Unable to load global leaderboard" } }
+    if(globalStatus) globalStatus.textContent="Loading…";
+    const res = await fetch('/top');
+    const data = await res.json();
+    if(!data?.ok) throw new Error('bad');
+    if(globalStatus) globalStatus.textContent="";
+    globalBoard.innerHTML = data.items.map((x,i)=>(
+      `<li>#${i+1} ${x.pubkey.slice(0,4)}…${x.pubkey.slice(-4)} — ${x.best}</li>`
+    )).join("");
+  }catch{
+    if(globalStatus) globalStatus.textContent = USE_LOCAL_FALLBACK ? "Local leaderboard" : "Unable to load leaderboard";
+    if(USE_LOCAL_FALLBACK) renderLocalBoard();
+  }
 }
-document.addEventListener("DOMContentLoaded",()=>{ renderGlobalBoard(); setInterval(renderGlobalBoard,20000) });
 
-/* Shielded submit (no auto wallet at game over) */
+/* ---- Hook up buttons ---- */
 document.getElementById('submitScoreBtn').onclick = async () => {
   await withInputShield(async () => {
     await submitGlobalScore(window.game && game.score ? game.score : 0);
   });
 };
+document.getElementById('shareOverBtn').onclick = ()=>shareNow();
+
+/* ---- Boot: render board and refresh periodically ---- */
+document.addEventListener("DOMContentLoaded", ()=>{
+  renderGlobalBoard();
+  setInterval(renderGlobalBoard, 20000);
+});
 
 /* Overlay controls */
 bigPlay.onclick=async()=>{ await resumeAudio(); start() };
