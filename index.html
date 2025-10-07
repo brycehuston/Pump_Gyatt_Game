@@ -38,6 +38,8 @@
   .btn.glow{background:linear-gradient(135deg,var(--orange),var(--orange-2));color:#111;border:0;box-shadow:0 10px 28px rgba(255,122,0,.28), 0 0 0 1px rgba(255,122,0,.25) inset}
   .btn.glow:hover{box-shadow:0 14px 40px rgba(255,122,0,.4), 0 0 0 1px rgba(255,122,0,.25) inset;filter:saturate(110%)}
   .btn.small{padding:8px 12px;font-size:13px}
+  a.btn, a.btn:hover { text-decoration: none; }
+
   .panel{background:var(--panel);border:1px solid var(--stroke);border-radius:var(--radius);padding:clamp(18px,2vw,26px)}
   .glow-border{border-color:rgba(255,190,110,.45)!important;box-shadow:0 0 0 2px rgba(255,190,110,.45),0 0 28px rgba(255,140,0,.32)}
   .grid{display:grid;gap:var(--s-2)}
@@ -81,10 +83,8 @@
       </div>
     </div>
     <div class="row">
-      <!-- NEW: Links -->
       <a class="btn" href="https://pump-gyatt.vercel.app/" target="_blank" rel="noopener">🌐 Website</a>
       <a class="btn" href="https://t.me/PumpGyatt" target="_blank" rel="noopener">💬 Telegram</a>
-
       <button id="connectBtn" class="btn">Connect Phantom</button>
       <label class="btn">🔇 Mute <input id="muteChk" type="checkbox" style="vertical-align:-2px;margin-left:6px"></label>
       <button id="shareBtn" class="btn">Share on X</button>
@@ -92,10 +92,12 @@
     </div>
   </div>
 </header>
+
 <main class="wrap" style="padding-top:var(--s-4)">
   <div class="row" style="align-items:flex-start; gap:var(--s-3)">
     <div id="gameWrap" class="panel glow-border" style="flex:1 1 900px;padding:0">
       <canvas id="game"></canvas>
+
       <div id="startOverlay">
         <div class="over-box">
           <div class="over-title">PUMP GYATT</div>
@@ -107,6 +109,7 @@
           </div>
         </div>
       </div>
+
       <div id="overlay">
         <div class="over-box">
           <div class="over-title">GAME OVER</div>
@@ -120,9 +123,11 @@
           </div>
         </div>
       </div>
+
       <img id="gun" alt="bb-gun" draggable="false" src="gun.png">
       <img id="curtainFrame" class="curtain" alt="" src="curtain-frame.png">
     </div>
+
     <aside style="width:360px" class="grid">
       <div class="card">
         <p class="eyebrow">Live HUD</p>
@@ -135,6 +140,7 @@
           <div class="stat"><span class="k">Mode</span><span class="v" id="mode">x1</span></div>
         </div>
       </div>
+
       <div class="card">
         <p class="eyebrow">How to Play</p>
         <div class="tight" style="color:#e9e9e9">
@@ -144,16 +150,19 @@
           • <span class="tag">Frenzy @ 40s</span>: x2 score, faster spawns • Sprinter appears once
         </div>
       </div>
+
       <div class="card">
         <p class="eyebrow">Daily Mission</p>
         <div id="missionBox" class="tight" style="color:var(--muted)">Hit 0/3 glowing pumpkins today</div>
         <button id="resetMission" class="btn" style="margin-top:10px;width:100%">Reset</button>
       </div>
+
       <div class="card">
         <p class="eyebrow">Leaderboard</p>
         <div id="globalStatus" class="tight" style="opacity:.85"></div>
         <ol id="globalBoard" class="tight" style="margin:10px 0 0 16px"></ol>
       </div>
+
       <div class="card">
         <p class="eyebrow">Wallet</p>
         <div id="walletBox" class="tight">Not connected</div>
@@ -161,11 +170,14 @@
     </aside>
   </div>
 </main>
+
 <div id="shield" aria-hidden="true"></div>
 <audio id="bgm" src="game_music.mp3" preload="auto" loop playsinline webkit-playsinline></audio>
 
 <script>
 'use strict';
+
+/* ------------ Canvas / Fit ------------- */
 const cvs=document.getElementById('game'), ctx=cvs.getContext('2d');
 const wrap=document.getElementById('gameWrap');
 let W=0,H=0,dpr=1, RES=1;
@@ -194,6 +206,7 @@ function fit(){
 }
 addEventListener('resize',fit);
 
+/* ------------ DOM refs ------------- */
 const startOverlay=document.getElementById('startOverlay');
 const bigPlay=document.getElementById('bigPlay');
 const muteStart=document.getElementById('muteStart');
@@ -222,6 +235,7 @@ const globalBoard=document.getElementById('globalBoard');
 const globalStatus=document.getElementById('globalStatus');
 const shield=document.getElementById('shield');
 
+/* ------------ Assets ------------- */
 const zombieImg=new Image(); zombieImg.src="zombie.png";
 const bossImg=new Image(); bossImg.src="monster-zombie.png";
 const batImg=new Image(); batImg.src="bat.png";
@@ -229,17 +243,21 @@ const ghostImg=new Image(); ghostImg.src="ghost.png";
 const sprinterImg=new Image(); sprinterImg.src="glowing-pumpk.png";
 const scareImg=new Image(); scareImg.src="monster-face.png";
 
+/* ------------ Helpers ------------- */
 const isCoarse = matchMedia && matchMedia('(pointer: coarse)').matches;
 const MOBILE = {
   assist: isCoarse ? 56 : 0,
-  hitScale: isCoarse ? 1.18 : 1,     // (slightly easier on mobile, smaller on desktop via HITBOX_SCALE)
-  speedMul: isCoarse ? 0.95 : 1.08,  // enemies a bit faster overall
-  spawnIntMul: isCoarse ? 1.05 : 0.92, // slightly more/faster spawns on desktop
+  hitScale: isCoarse ? 1.18 : 1,
+  speedMul: isCoarse ? 0.95 : 1.08,
+  spawnIntMul: isCoarse ? 1.05 : 0.92,
   sprinterSpeedMul: isCoarse ? 1.0 : 1.1
 };
 function rand(a,b){ return a + Math.random()*(b-a) }
 function clamp(v,a,b){ return Math.max(a,Math.min(b,v)) }
+function safeLSGet(key, def){ try{ const raw=localStorage.getItem(key); return raw?JSON.parse(raw):def }catch{ return def } }
+function today(){ const d=new Date(); return d.toISOString().slice(0,10) }
 
+/* ------------ FX ------------- */
 const pops=[], floats=[], confetti=[]; let rankFx=0, rankText="", comboFlame=0;
 function spawnPop(x,y){ for(let i=0;i<9;i++) pops.push({x,y,vx:(Math.random()*2-1)*2.0,vy:(Math.random()*2-1)*1.8-0.5,r:2+Math.random()*2,life:220,t:0,h:28+Math.random()*10}) }
 function spawnConfetti(x,y,c=22){ for(let i=0;i<c;i++){ confetti.push({x,y,vx:(Math.random()*2-1)*3.2,vy:-2.2-Math.random()*3.4,ay:0.12,rot:Math.random()*6.28,vr:(Math.random()*0.5-0.25),size:2+Math.random()*3.5,life:900+Math.random()*700,t:0,h:Math.floor(Math.random()*360)}) } }
@@ -256,6 +274,7 @@ function updateFx(dt){
   if (comboFlame>0) comboFlame=Math.max(0,comboFlame-dt*0.8);
 }
 
+/* ------------ Background ------------- */
 let parX=0, parY=0, stars=[];
 wrap.addEventListener('pointermove',e=>{ const r=wrap.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width; const y=(e.clientY-r.top)/r.height; parX=x-0.5; parY=y-0.5 });
 function buildStars(){ const count=Math.max(160, Math.floor(W*H/14000)); stars = Array.from({length:count}, ()=>({x:Math.random()*W, y:Math.random()*H, r:0.4+Math.random()*1.6, tw:Math.random()*6.28})) }
@@ -265,8 +284,9 @@ function drawLantern(x,y){ const flick=0.7+0.3*Math.sin(performance.now()/120 + 
 function drawFloor(){ const y=H-64; ctx.fillStyle='#141414'; ctx.fillRect(0,y,W,64); ctx.fillStyle='#101010'; for(let i=0;i<W;i+=64){ ctx.fillRect(i,y,56,4) } ctx.fillStyle='rgba(255,255,255,0.05)'; for(let i=0;i<6;i++){ ctx.fillRect(0,y-6-i*70,W,2) } }
 function drawBackground(){ const sky=ctx.createLinearGradient(0,0,0,H); sky.addColorStop(0,'#0f1214'); sky.addColorStop(1,'#0a0a0a'); ctx.fillStyle=sky; ctx.fillRect(0,0,W,H); drawStars(); const moonX=W*0.82+parX*14, moonY=H*0.18+parY*8; drawMoon(moonX,moonY,60*RES); for(let i=0;i<4;i++){ const y=H*0.62+i*18*RES, sway=Math.sin(performance.now()/1000*0.8+i)*8; ctx.beginPath(); ctx.moveTo(-50, H); for(let x=0;x<=W+50;x+=48){ const ty = y + Math.sin((x*0.01)+i)*14 + sway; ctx.lineTo(x, ty) } ctx.lineTo(W+50,H); ctx.closePath(); ctx.fillStyle = i%2? '#0b0b0b' : '#0c0c0c'; ctx.fill() } drawLantern(60+parX*8, 48+parY*4); drawLantern(W-60+parX*8, 48+parY*4); drawFloor() }
 
+/* ------------ Game state ------------- */
 let game=null;
-const HITBOX_SCALE=0.82; // smaller = harder (was 0.9)
+const HITBOX_SCALE=0.82;
 function lanes3(){ const f=H-64; return [f-20*RES, f-90*RES, f-160*RES] }
 function rid(){ return Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2) }
 
@@ -284,6 +304,7 @@ function drawChar(t){
   ctx.rotate(rot);
   ctx.scale(1+squash,1-squash);
   if(img.complete) ctx.drawImage(img,-t.w/2,-t.h,t.w,t.h);
+
   const phase = tt*7.2+t.seed;
   const leftLift = Math.max(0, Math.sin(phase))*8*RES;
   const rightLift = Math.max(0, Math.sin(phase+Math.PI))*8*RES;
@@ -294,6 +315,7 @@ function drawChar(t){
   ctx.globalAlpha=1; ctx.strokeStyle='rgba(60,50,70,0.9)'; ctx.lineWidth=4;
   ctx.beginPath(); ctx.moveTo(-spread, -t.h*0.08 - leftLift); ctx.lineTo(-spread, 6); ctx.stroke();
   ctx.beginPath(); ctx.moveTo( spread, -t.h*0.08 - rightLift); ctx.lineTo( spread, 6); ctx.stroke();
+
   if(t.glow){
     const off=t.flip?-t.pumpOffsetX:t.pumpOffsetX;
     const x=t.x+off, y=t.y+t.pumpOffsetY;
@@ -304,6 +326,7 @@ function drawChar(t){
     ctx.globalCompositeOperation='source-over';
   }
   ctx.restore();
+
   if(t.kind==='boss'){
     const hpPerc=Math.max(0,(t.hp||0)/6);
     ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillRect(t.x-50*RES,t.y-t.h-18*RES,100*RES,10*RES);
@@ -312,139 +335,113 @@ function drawChar(t){
   }
 }
 function drawBat(t){ const s=(performance.now()-t.animStart)/1000; const flap=1+0.15*Math.sin(s*10); const bob=4*RES*Math.sin(s*3); ctx.save(); ctx.translate(t.x,t.y+bob); ctx.scale(t.flip?-1:1,flap); if(batImg.complete) ctx.drawImage(batImg,-t.w/2,-t.h/2,t.w,t.h); ctx.restore() }
-function drawGhost(t){ const s=(performance.now()-t.animStart)/1000; const bob=6*RES*Math.sin(s*2+t.seed); const fade=0.6+0.4*Math.sin(s*3+t.seed); ctx.save(); ctx.globalAlpha=0.6+0.4*fade; if(ghostImg.complete){ ctx.translate(t.x,t.y+bob); ctx.drawImage(ghostImg,-t.w/2,-t.h/2,t.w,t.h) } ctx.restore() }
+function drawGhost(t){ const s=(performance.now()-t.animStart)/1000; const bob=6*RES*Math.sin(s*2+t.seed); ctx.save(); ctx.globalAlpha=0.6+0.4*Math.sin(s*3+t.seed); if(ghostImg.complete){ ctx.translate(t.x,t.y+bob); ctx.drawImage(ghostImg,-t.w/2,-t.h/2,t.w,t.h) } ctx.restore() }
 
+/* spawners */
 function spawnZombie(g){
   if(g.targets.length>=g.maxTargets) return;
-  const L=lanes3();
-  const y=L[Math.floor(Math.random()*L.length)];
-  const fromLeft=Math.random()<0.5; const x=fromLeft?-60*RES:W+60*RES;
-  const speed=(0.095+Math.random()*0.08)*MOBILE.speedMul*RES; // faster
+  const L=lanes3(); const y=L[Math.floor(Math.random()*L.length)];
+  const fromLeft=Math.random()<0.5;
+  const speed=(0.095+Math.random()*0.08)*MOBILE.speedMul*RES;
   const scale=0.9+Math.random()*0.2;
   const w=140*scale*RES, h=200*scale*RES;
   const bodyR=26*scale*HITBOX_SCALE*MOBILE.hitScale*RES, pumpR=24*scale*HITBOX_SCALE*MOBILE.hitScale*RES;
   const pumpOffsetX=-20*scale*RES, pumpOffsetY=-60*scale*RES;
-  const z={id:rid(),kind:'zombie',x,y,vx:fromLeft?speed:-speed,vy:0,dead:false,flip:!fromLeft,w,h,bodyR,pumpR,pumpOffsetX,pumpOffsetY,animStart:performance.now(),seed:Math.random()*Math.PI*2,stepAmp:6*scale*RES,bobAmp:3*scale*RES,swayAmp:0.06,squashAmp:0.04,canSwap:true,hp:1,glow:false};
+  const z={id:rid(),kind:'zombie',x: fromLeft?-60*RES:W+60*RES,y,vx:fromLeft?speed:-speed,vy:0,dead:false,flip:!fromLeft,w,h,bodyR,pumpR,pumpOffsetX,pumpOffsetY,animStart:performance.now(),seed:Math.random()*Math.PI*2,stepAmp:6*scale*RES,bobAmp:3*scale*RES,swayAmp:0.06,squashAmp:0.04,canSwap:true,hp:1,glow:false};
   g.targets.push(z); g.firstWave=true
 }
 function spawnBoss(g){
   if(!g.firstWave) return;
   const existing=g.targets.filter(t=>t.kind==='boss'&&!t.dead).length;
   if(existing>=2) return;
-  const L=lanes3().slice(0,2);
-  const y=L[Math.floor(Math.random()*L.length)];
-  const fromLeft=Math.random()<0.5; const x=fromLeft?-110*RES:W+110*RES;
-  const vx=(fromLeft?0.065:-0.065)*MOBILE.speedMul*RES; // tad faster
+  const L=lanes3().slice(0,2); const y=L[Math.floor(Math.random()*L.length)];
+  const fromLeft=Math.random()<0.5;
+  const vx=(fromLeft?0.065:-0.065)*MOBILE.speedMul*RES;
   const scale=1.5;
   const w=190*scale*RES, h=260*scale*RES;
   const bodyR=40*scale*HITBOX_SCALE*MOBILE.hitScale*RES, pumpR=36*scale*HITBOX_SCALE*MOBILE.hitScale*RES;
   const pumpOffsetX=-30*scale*RES, pumpOffsetY=-78*scale*RES;
-  const boss={id:rid(),kind:'boss',x,y,vx,vy:0,dead:false,flip:!fromLeft,w,h,bodyR,pumpR,pumpOffsetX,pumpOffsetY,animStart:performance.now(),seed:Math.random()*Math.PI*2,stepAmp:7*scale*RES,bobAmp:4*scale*RES,swayAmp:0.05,squashAmp:0.03,hp:6,glow:false};
+  const boss={id:rid(),kind:'boss',x: fromLeft?-110*RES:W+110*RES,y,vx,vy:0,dead:false,flip:!fromLeft,w,h,bodyR,pumpR,pumpOffsetX,pumpOffsetY,animStart:performance.now(),seed:Math.random()*Math.PI*2,stepAmp:7*scale*RES,bobAmp:4*scale*RES,swayAmp:0.05,squashAmp:0.03,hp:6,glow:false};
   g.targets.push(boss);
   g.bossIntro={id:boss.id, t:performance.now()};
   g.timescale=0.4;
   roarSound(2.2);
   g.bossCount++;
-  g.nextBossAt = (g.bossCount<g.bossTarget) ? g.t + 14000 + Math.random()*6000 : Infinity; // earlier
+  g.nextBossAt = (g.bossCount<g.bossTarget) ? g.t + 14000 + Math.random()*6000 : Infinity;
   g.telegraphed=false;
 }
-function spawnBat(g){ if(g.targets.length>=g.maxTargets) return; const y=(H-64)-120*RES-Math.random()*110*RES; const fromLeft=Math.random()<0.5; const x=fromLeft?-40*RES:W+40*RES; const vx=(fromLeft?(0.2+Math.random()*0.06):-(0.2+Math.random()*0.06))*MOBILE.speedMul*RES; const w=110*RES,h=60*RES; const r=Math.min(w,h)*0.45*MOBILE.hitScale; g.targets.push({id:rid(),kind:'bat',x,y,vx,vy:0,dead:false,animStart:performance.now(),r,flip:!fromLeft,w,h}) }
-function spawnGhost(g){ if(g.targets.length>=g.maxTargets) return; const y=(H-64)-100*RES-Math.random()*120*RES; const fromLeft=Math.random()<0.5; const x=fromLeft?-60*RES:W+60*RES; const vx=(fromLeft?(0.09+Math.random()*0.05):-(0.09+Math.random()*0.05))*MOBILE.speedMul*RES; const w=120*RES,h=100*RES; const r=42*MOBILE.hitScale*RES; g.targets.push({id:rid(),kind:'ghost',x,y,vx,vy:0,dead:false,animStart:performance.now(),r,flip:!fromLeft,w,h,seed:Math.random()*6.28}) }
-function spawnSprinter(g){ if(g.specialSpawned || g.targets.length>=g.maxTargets) return; g.specialSpawned=true; const L=lanes3().slice(0,2); const y=L[Math.floor(Math.random()*L.length)]; const fromLeft=Math.random()<0.5; const x=fromLeft?-80*RES:W+80*RES; const vx=(fromLeft?0.85:-0.85)*MOBILE.sprinterSpeedMul*RES; const scale=1.05; const w=150*scale*RES, h=210*scale*RES; const bodyR=28*scale*HITBOX_SCALE*MOBILE.hitScale*RES, pumpR=26*scale*HITBOX_SCALE*MOBILE.hitScale*RES; const pumpOffsetX=-22*scale*RES, pumpOffsetY=-62*scale*RES; const t={id:rid(),kind:'sprinter',x,y,vx,vy:0,dead:false,flip:!fromLeft,w,h,bodyR,pumpR,pumpOffsetX,pumpOffsetY,animStart:performance.now(),seed:Math.random()*Math.PI*2,stepAmp:7*scale*RES,bobAmp:5*scale*RES,swayAmp:0.06,squashAmp:0.05,hp:1,glow:true,ttl:3500,spawnedAt:performance.now()}; g.targets.push(t) }
+function spawnBat(g){ if(g.targets.length>=g.maxTargets) return; const y=(H-64)-120*RES-Math.random()*110*RES; const fromLeft=Math.random()<0.5; const vx=(fromLeft?(0.2+Math.random()*0.06):-(0.2+Math.random()*0.06))*MOBILE.speedMul*RES; const w=110*RES,h=60*RES; const r=Math.min(w,h)*0.45*MOBILE.hitScale; g.targets.push({id:rid(),kind:'bat',x: fromLeft?-40*RES:W+40*RES,y,vx,vy:0,dead:false,animStart:performance.now(),r,flip:!fromLeft,w,h}) }
+function spawnGhost(g){ if(g.targets.length>=g.maxTargets) return; const y=(H-64)-100*RES-Math.random()*120*RES; const fromLeft=Math.random()<0.5; const vx=(fromLeft?(0.09+Math.random()*0.05):-(0.09+Math.random()*0.05))*MOBILE.speedMul*RES; const w=120*RES,h=100*RES; const r=42*MOBILE.hitScale*RES; g.targets.push({id:rid(),kind:'ghost',x: fromLeft?-60*RES:W+60*RES,y,vx,vy:0,dead:false,animStart:performance.now(),r,flip:!fromLeft,w,h,seed:Math.random()*6.28}) }
+function spawnSprinter(g){ if(g.specialSpawned || g.targets.length>=g.maxTargets) return; g.specialSpawned=true; const L=lanes3().slice(0,2); const y=L[Math.floor(Math.random()*L.length)]; const fromLeft=Math.random()<0.5; const vx=(fromLeft?0.85:-0.85)*MOBILE.sprinterSpeedMul*RES; const scale=1.05; const w=150*scale*RES, h=210*scale*RES; const bodyR=28*scale*HITBOX_SCALE*MOBILE.hitScale*RES, pumpR=26*scale*HITBOX_SCALE*MOBILE.hitScale*RES; const pumpOffsetX=-22*scale*RES, pumpOffsetY=-62*scale*RES; const t={id:rid(),kind:'sprinter',x: fromLeft?-80*RES:W+80*RES,y,vx,vy:0,dead:false,flip:!fromLeft,w,h,bodyR,pumpR,pumpOffsetX,pumpOffsetY,animStart:performance.now(),seed:Math.random()*Math.PI*2,stepAmp:7*scale*RES,bobAmp:5*scale*RES,swayAmp:0.06,squashAmp:0.05,hp:1,glow:true,ttl:3500,spawnedAt:performance.now()}; g.targets.push(t) }
 
-function safeLSGet(key, def){ try{ const raw=localStorage.getItem(key); return raw?JSON.parse(raw):def }catch{ return def } }
-function today(){ const d=new Date(); return d.toISOString().slice(0,10) }
+/* missions (local) */
 function loadMission(){ let m=safeLSGet('pk_mission',null); if(!m || m.day!==today()){ m={day:today(),goalGlow:3,hitGlow:0,done:false}; localStorage.setItem('pk_mission',JSON.stringify(m)) } return m }
 function saveMission(m){ localStorage.setItem('pk_mission',JSON.stringify(m)); renderMission() }
 function renderMission(){ const m=loadMission(); missionBox.textContent = m.done?`Completed • Hit ${m.goalGlow}/${m.goalGlow} glowing pumpkins`: `Hit ${m.hitGlow}/${m.goalGlow} glowing pumpkins today` }
 resetMissionBtn.onclick=()=>{ try{ localStorage.removeItem('pk_mission') }catch{} renderMission() }
 
-function chooseGlow(g){
-  const cand = g.targets.filter(t=> (t.kind==='zombie'||t.kind==='boss'||t.kind==='sprinter') && !t.dead);
-  if(!cand.length) return;
-  const t = cand[(Math.random()*cand.length)|0];
-  clearGlow(g);
-  t.glow = true;
-  g.glowId = t.id;
-}
-function clearGlow(g){
-  if(!g.glowId) return;
-  const t=g.targets.find(x=>x.id===g.glowId);
-  if(t) t.glow=false;
-  g.glowId=null;
-}
-function startBlackout(g){
-  g.blackoutMs = 1000 + Math.random()*1100; // slightly snappier blackout
-  chooseGlow(g);
-}
-function shake(g, t, mag){
-  g.shakeTime = t;
-  g.shakeMag = Math.max(g.shakeMag||0, mag||0);
-}
+/* glow / blackout */
+function chooseGlow(g){ const cand = g.targets.filter(t=> (t.kind==='zombie'||t.kind==='boss'||t.kind==='sprinter') && !t.dead); if(!cand.length) return; const t = cand[(Math.random()*cand.length)|0]; clearGlow(g); t.glow = true; g.glowId = t.id; }
+function clearGlow(g){ if(!g.glowId) return; const t=g.targets.find(x=>x.id===g.glowId); if(t) t.glow=false; g.glowId=null; }
+function startBlackout(g){ g.blackoutMs = 1000 + Math.random()*1100; chooseGlow(g); }
+function shake(g, t, mag){ g.shakeTime = t; g.shakeMag = Math.max(g.shakeMag||0, mag||0); }
 
+/* new game */
 function pickHoldMs(){ const r=Math.random(); if(r<0.25) return rand(800,1200); if(r<0.60) return rand(1300,2200); if(r<0.85) return rand(2200,3200); return rand(3200,4200) }
 function newGame(){
-  const t1 = 9000 + Math.random()*9000;   // earlier scare #1
-  const t2 = 24000 + Math.random()*12000; // earlier scare #2
+  const t1 = 9000 + Math.random()*9000;
+  const t2 = 24000 + Math.random()*12000;
   return {
     running:true, ended:false, t:0, timeLeft:60,
     score:0, combo:0, misses:0,
     targets:[], maxTargets:22,
-    spawnInt:780*MOBILE.spawnIntMul, accelEach:6000, lastSpawn:0, lastAccel:0, minSpawn:220, // faster pacing
+    spawnInt:780*MOBILE.spawnIntMul, accelEach:6000, lastSpawn:0, lastAccel:0, minSpawn:220,
     shakeTime:0, shakeMag:0, lastHitTime:0,
     blackoutMs:0, glowId:null,
     bossIntro:null, timescale:1, frenzy:false, mult:1,
-    bossTarget:3, bossCount:0, nextBossAt:16000+Math.random()*8000, // +1 boss, earlier
+    bossTarget:3, bossCount:0, nextBossAt:16000+Math.random()*8000,
     telegraphed:false, telegraphTimer:0,
     rank:"Rookie", firstWave:false, glowEnabledAt:5000, specialSpawned:false,
     heat:0, jammed:false, jamUntil:0,
-    scarePlan:[t1, t2],
-    scareIndex:0,
+    scarePlan:[t1, t2], scareIndex:0,
     scare:{active:false, phase:"idle", alpha:0, hold:0, holdTarget:0, reveal:0, revealMs:720, fadeInMs:120, fadeOutMs:460, done:false, cfg:null, flash:0}
   }
 }
-const rankSteps=[{n:"Rookie",t:0},{n:"Slayer",t:120},{n:"King",t:240},{n:"Overlord",t:420},{n:"Pump-King",t:650}]; // tuned for faster pace
+const rankSteps=[{n:"Rookie",t:0},{n:"Slayer",t:120},{n:"King",t:240},{n:"Overlord",t:420},{n:"Pump-King",t:650}];
 function updateRank(g){ const cur=rankSteps.filter(r=>g.score>=r.t).pop(); if(cur && cur.n!==g.rank){ g.rank=cur.n; rankEl.textContent=g.rank; rankText="RANK UP: "+g.rank; rankFx=1500; rankUpSound(); addFloat(g.rank, W/2, 120, "rgb(255,230,120)", 1500) } }
 function floorY(){ return H-64 }
 
+/* update loop */
 function update(dt,g){
   const dte=Math.min(34,dt)*(g.timescale||1);
   g.t+=dte; g.timeLeft=Math.max(0,g.timeLeft-dte/1000);
-  if(!g.frenzy && g.timeLeft<=40){ g.frenzy=true; g.mult=2; g.spawnInt=Math.max(200,g.spawnInt*0.6); modeEl.textContent='x2' } // earlier frenzy + lower floor
+  if(!g.frenzy && g.timeLeft<=40){ g.frenzy=true; g.mult=2; g.spawnInt=Math.max(200,g.spawnInt*0.6); modeEl.textContent='x2' }
   if(g.timeLeft<=0) g.running=false;
-  if(g.t-g.lastAccel>g.accelEach){ g.lastAccel=g.t; g.spawnInt=Math.max(g.minSpawn,g.spawnInt*0.9) } // ramps a bit faster
+  if(g.t-g.lastAccel>g.accelEach){ g.lastAccel=g.t; g.spawnInt=Math.max(g.minSpawn,g.spawnInt*0.9) }
   if(!g.telegraphed && g.nextBossAt!==Infinity && g.t>g.nextBossAt-2000){ g.telegraphed=true; g.telegraphTimer=2000; lowRoar(1.2) }
   if(g.telegraphTimer>0) g.telegraphTimer=Math.max(0,g.telegraphTimer-dte);
   if(g.blackoutMs>0){ g.blackoutMs-=dte; if(g.blackoutMs<=0) clearGlow(g) }
   else if(g.t-g.lastSpawn>g.spawnInt){
     g.lastSpawn=g.t;
-       const r=Math.random();
-    // Slightly higher bat frequency
+    const r=Math.random();
     if(r<0.60)      spawnZombie(g);
     else if(r<0.88) spawnBat(g);
     else if(r<0.97) spawnGhost(g);
-
     if(g.nextBossAt!==Infinity && g.t>g.nextBossAt) spawnBoss(g);
     if(Math.random()<0.085) startBlackout(g);
   }
-
-  // sprinter earlier in the round
   if(!g.specialSpawned && g.t>9000) spawnSprinter(g);
 
-  // boss slow-mo ease-in
   if(g.bossIntro){
     const age=(performance.now()-g.bossIntro.t)/1000;
     g.timescale=Math.min(1,0.4+age*0.35);
     if(age>2.2){ g.timescale=1; g.bossIntro=null }
   }
 
-  // move + cull targets
   for(const t of g.targets){
     t.x += t.vx * dte;
     t.x += (0.015*Math.sin((performance.now()+t.x)*0.002)) * dte;
-
     if(t.kind==='sprinter' && performance.now()-t.spawnedAt>t.ttl) t.dead=true;
-
     if((t.kind==='zombie'||t.kind==='boss'||t.kind==='sprinter') && t.canSwap && Math.random()<0.0016){
       const L=lanes3(); t.y=L[(Math.random()*L.length)|0]; t.canSwap=false;
     }
@@ -452,40 +449,29 @@ function update(dt,g){
   }
   g.targets=g.targets.filter(z=>!z.dead);
 
-  // misc timers
   if(g.shakeTime>0){ g.shakeTime-=dte; if(g.shakeTime<=0) g.shakeMag=0 }
   if(g.lastHitTime && performance.now()-g.lastHitTime>2000){ g.combo=0; g.lastHitTime=0; comboFlame=0 }
   if(g.glowId && !g.targets.some(t=>t.id===g.glowId)) clearGlow(g);
 
-  // overheat / jam
   g.heat=Math.max(0, g.heat - dte*0.065);
   if(g.jammed && performance.now()>=g.jamUntil){
     g.jammed=false; g.heat=70;
     addFloat("READY", W/2, H*0.28, "rgb(180,240,180)", 900);
   }
 
-  // spooky face sequence + fx
   updateScare(g,dte);
   updateFx(dte);
-
-  // update HUD every tick
   drawHUD(g);
 }
 
-/* ---------- SCARE / ROAR HELPERS (same API as before) ---------- */
+/* ---------- SCARE ---------- */
 let scareDraw=null;
 const EYE_FULL_L={x:0.38,y:0.38};
 const EYE_FULL_R={x:0.62,y:0.38};
-function faceCropNear(){
-  const base={sx:0.20, sy:0.16, sw:0.60, sh:0.60};
-  const jx=(Math.random()*0.06-0.03), jy=(Math.random()*0.04-0.02);
-  const sx=clamp(base.sx+jx,0,1-base.sw);
-  const sy=clamp(base.sy+jy,0,1-base.sh);
-  return {sx,sy,sw:base.sw,sh:base.sh};
-}
+function faceCropNear(){ const base={sx:0.20, sy:0.16, sw:0.60, sh:0.60}; const jx=(Math.random()*0.06-0.03), jy=(Math.random()*0.04-0.02); const sx=clamp(base.sx+jx,0,1-base.sw); const sy=clamp(base.sy+jy,0,1-base.sh); return {sx,sy,sw:base.sw,sh:base.sh}; }
 function planScarePlacement(g){
   const idx = g ? g.scareIndex : 0;
-  let near = idx===0 ? Math.random()<0.25 : Math.random()<0.75;
+  const near = idx===0 ? Math.random()<0.25 : Math.random()<0.75;
   if (!near) {
     const iw=scareImg.naturalWidth||512, ih=scareImg.naturalHeight||512;
     const aspect=ih/iw;
@@ -516,23 +502,20 @@ function updateScare(g,dte){
   if(s.flash>0) s.flash=Math.max(0,s.flash-dte);
 }
 
-/* ---------- RENDER (unchanged visuals, faster pacing works fine) ---------- */
+/* ---------- Render ---------- */
 function render(g){
   const sx=g.shakeMag?(Math.random()-0.5)*g.shakeMag:0, sy=g.shakeMag?(Math.random()-0.5)*g.shakeMag:0;
   ctx.save(); ctx.translate(sx,sy);
   drawBackground();
-
   for(const t of g.targets){
     if(t.kind==='zombie'||t.kind==='boss'||t.kind==='sprinter') drawChar(t);
     else if(t.kind==='bat')   drawBat(t);
     else if(t.kind==='ghost') drawGhost(t);
   }
-
   if(g.blackoutMs>0){
     ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillRect(0,0,W,H);
     g.targets.forEach(t=>{ if(t.glow) drawChar(t) });
   }
-
   if(g.scare.active){
     const s=g.scare;
     if(s.phase!=='reveal'){ ctx.fillStyle=`rgba(0,0,0,${s.alpha})`; ctx.fillRect(0,0,W,H) }
@@ -557,7 +540,6 @@ function render(g){
       if(s.flash>0){ const a=Math.max(0, s.flash/260); ctx.fillStyle=`rgba(255,255,255,${0.9*a})`; ctx.fillRect(0,0,W,H) }
     }
   }
-
   if(g.telegraphTimer>0){
     const a = 0.25 + 0.25*Math.sin(performance.now()/100);
     ctx.fillStyle=`rgba(180,0,0,${a})`; ctx.fillRect(0,0,W,H);
@@ -566,7 +548,6 @@ function render(g){
     ctx.fillText("BOSS", W/2, 150*RES);
     ctx.restore();
   }
-
   for(const cf of confetti){
     const a=Math.max(0,1-(cf.t/cf.life));
     ctx.save(); ctx.translate(cf.x,cf.y); ctx.rotate(cf.rot);
@@ -574,7 +555,6 @@ function render(g){
     ctx.fillRect(-cf.size*0.5,-cf.size*0.5,cf.size,cf.size*1.6);
     ctx.restore();
   }
-
   drawFXLayer(); drawCrosshair(); drawComboFlames();
   ctx.restore();
 }
@@ -605,19 +585,9 @@ function drawComboFlames(){
   ctx.fillStyle=g; ctx.beginPath(); ctx.arc(mouseX,mouseY,r,0,Math.PI*2); ctx.fill();
 }
 
-/* ---------- INPUT / GUN / SHOOTING (bat penalty -3) ---------- */
+/* ---------- Input / Shooting ---------- */
 let mouseX=0,mouseY=0;
-function drawCrosshair(){
-  const r=5*RES; ctx.save(); ctx.translate(mouseX,mouseY);
-  ctx.strokeStyle='rgba(255,235,150,0.95)'; ctx.lineWidth=2;
-  ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(-9*RES,0); ctx.lineTo(-4*RES,0);
-  ctx.moveTo( 4*RES,0); ctx.lineTo( 9*RES,0);
-  ctx.moveTo(0,-9*RES); ctx.lineTo(0,-4*RES);
-  ctx.moveTo(0, 4*RES); ctx.lineTo(0, 9*RES);
-  ctx.stroke(); ctx.restore();
-}
+function drawCrosshair(){ const r=5*RES; ctx.save(); ctx.translate(mouseX,mouseY); ctx.strokeStyle='rgba(255,235,150,0.95)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-9*RES,0); ctx.lineTo(-4*RES,0); ctx.moveTo( 4*RES,0); ctx.lineTo( 9*RES,0); ctx.moveTo(0,-9*RES); ctx.lineTo(0,-4*RES); ctx.moveTo(0, 4*RES); ctx.lineTo(0, 9*RES); ctx.stroke(); ctx.restore(); }
 function setGun(x,y){
   if(isCoarse){ gunImg.style.display='none'; return }
   const cx=W*0.5, cy=H*0.75; const nx=(x-cx)/(W*0.5), ny=(y-cy)/(H*0.5);
@@ -637,12 +607,7 @@ wrap.addEventListener('pointerdown',async()=>{
   if(game.running) shootAt(game,mouseX,mouseY);
 });
 
-function eyeToScreen(draw,eye){
-  if(!draw) return {x:-9999,y:-9999};
-  const nx=(eye.x - draw.crop.sx)/draw.crop.sw;
-  const ny=(eye.y - draw.crop.sy)/draw.crop.sh;
-  return {x:draw.dx + nx*draw.dw, y:draw.dy + ny*draw.dh};
-}
+function eyeToScreen(draw,eye){ if(!draw) return {x:-9999,y:-9999}; const nx=(eye.x - draw.crop.sx)/draw.crop.sw; const ny=(eye.y - draw.crop.sy)/draw.crop.sh; return {x:draw.dx + nx*draw.dw, y:draw.dy + ny*draw.dh}; }
 function shootScare(g,mx,my){
   if(!g.scare.active || g.scare.phase!=='reveal' || !scareDraw) return;
   const L=eyeToScreen(scareDraw,EYE_FULL_L), R=eyeToScreen(scareDraw,EYE_FULL_R);
@@ -657,6 +622,7 @@ function shootScare(g,mx,my){
     g.scare.phase='lighten'; g.scare.alpha=1;
   } else missSound();
 }
+
 function shootAt(g,mx,my){
   if(g.scare.active && g.scare.phase==='reveal'){ shootScare(g,mx,my); return }
   if(g.jammed){ addFloat("JAMMED!", mx, my-18, "rgb(255,100,100)", 900); missSound(); return }
@@ -681,7 +647,7 @@ function shootAt(g,mx,my){
   if(!pick){ miss(g,mx,my); postShot(g); return }
 
   if(kind==='bat'){
-    pick.z.dead=true; val=-3; // harder penalty
+    pick.z.dead=true; val=-3;
     addFloat("-3", pick.z.x, pick.z.y-24, "rgb(255,80,80)", 1200); badHitSound();
   }
   else if(kind==='ghost'){
@@ -740,31 +706,11 @@ function shootAt(g,mx,my){
 
   updateRank(g); drawHUD(g); postShot(g);
 }
-function postShot(g){
-  g.heat=Math.min(100, g.heat+18);
-  if(g.heat>=100){
-    g.jammed=true; g.jamUntil=performance.now()+1200;
-    addFloat("JAM!", W/2, H*0.3, "rgb(255,120,120)", 1200);
-  }
-}
-function miss(g,x,y){
-  g.combo=0; comboFlame=0;
-  g.score=Math.max(0,g.score-1);
-  g.misses+=1;
-  addFloat("-1", x, y, "rgb(255,80,80)", 1200);
-  missSound();
-  drawHUD(g);
-}
-function drawHUD(g){
-  scoreEl.textContent = String(g.score|0);
-  timeEl.textContent = String(Math.ceil(g.timeLeft));
-  comboEl.textContent = String(g.combo|0);
-  missEl.textContent = String(g.misses|0);
-  rankEl.textContent = g.rank;
-  modeEl.textContent = 'x'+g.mult;
-}
+function postShot(g){ g.heat=Math.min(100, g.heat+18); if(g.heat>=100){ g.jammed=true; g.jamUntil=performance.now()+1200; addFloat("JAM!", W/2, H*0.3, "rgb(255,120,120)", 1200); } }
+function miss(g,x,y){ g.combo=0; comboFlame=0; g.score=Math.max(0,g.score-1); g.misses+=1; addFloat("-1", x, y, "rgb(255,80,80)", 1200); missSound(); drawHUD(g); }
+function drawHUD(g){ scoreEl.textContent = String(g.score|0); timeEl.textContent = String(Math.ceil(g.timeLeft)); comboEl.textContent = String(g.combo|0); missEl.textContent = String(g.misses|0); rankEl.textContent = g.rank; modeEl.textContent = 'x'+g.mult; }
 
-/* ---------- AUDIO (same as your working roar version) ---------- */
+/* ---------- AUDIO ---------- */
 let audioCtx=null, muted=false, audioReady=false;
 function ensureAudio(){
   try{
@@ -801,11 +747,7 @@ function blip(fStart,fEnd,dur,gain,type){
     o.start(t0); o.stop(t0+dur);
   }catch{}
 }
-function hitSound(kind){
-  if(kind==="pumpGlow") blip(1100,300,0.12,0.16,"triangle");
-  else if(kind==="pump") blip(900,300,0.11,0.12,"triangle");
-  else blip(540,220,0.08,0.10,"square");
-}
+function hitSound(kind){ if(kind==="pumpGlow") blip(1100,300,0.12,0.16,"triangle"); else if(kind==="pump") blip(900,300,0.11,0.12,"triangle"); else blip(540,220,0.08,0.10,"square"); }
 function badHitSound(){ blip(240,160,0.07,0.09,"square") }
 function missSound(){ blip(180,110,0.08,0.09,"sawtooth") }
 function lowRoar(power=1){ blip(320*power,220*power,0.35,0.12,"sawtooth") }
@@ -813,36 +755,49 @@ function rankUpSound(){ blip(440,880,0.22,0.16,"triangle") }
 function bigPopSound(){ blip(1600,260,0.11,0.35,"square"); blip(1200,320,0.14,0.25,"triangle") }
 function gameOverSound(){ blip(600,220,0.35,0.18,"sawtooth"); setTimeout(()=>blip(440,0,0.28,0.12,"triangle"),120) }
 
-// robust roar
+// Robust faux-roar using noise + filters + sub
 async function roarSound(power=2){
   if(muted) return;
   try{
     await resumeAudio();
     if(!audioReady) return;
-    const t0 = audioCtx.currentTime; const stopAt = t0 + 1.05;
+
+    const t0 = audioCtx.currentTime;
+    const stopAt = t0 + 1.05;
+
     const out = audioCtx.createGain(); out.gain.value = Math.min(1,0.9*power);
     const pan = (audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null);
     if(pan) pan.pan.value = (Math.random()*0.4-0.2);
     const comp = audioCtx.createDynamicsCompressor();
     comp.threshold.value=-16; comp.knee.value=14; comp.ratio.value=16; comp.attack.value=0.004; comp.release.value=0.18;
+
     const env = audioCtx.createGain(); env.gain.value=0.0001;
+
+    // Noise body
     const len = (1.2*audioCtx.sampleRate)|0;
     const noiseBuf = audioCtx.createBuffer(1,len,audioCtx.sampleRate);
     const nb = noiseBuf.getChannelData(0);
     for(let i=0;i<len;i++){ const t=i/len; nb[i]=(Math.random()*2-1)*Math.pow(1-t,0.7) }
-    const noise = audioCtx.createBufferSource(); noise.buffer=noiseBuf;
+    const noise = audioCtx.createBufferSource(); noise.buffer = noiseBuf;
+
+    // Filter chain
     const hp=audioCtx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=60; hp.Q.value=0.7;
     const shelf=audioCtx.createBiquadFilter(); shelf.type='lowshelf'; shelf.frequency.value=140; shelf.gain.value=10;
     const form1=audioCtx.createBiquadFilter(); form1.type='peaking'; form1.frequency.value=300; form1.Q.value=0.9; form1.gain.value=9;
     const form2=audioCtx.createBiquadFilter(); form2.type='peaking'; form2.frequency.value=520; form2.Q.value=1.0; form2.gain.value=5;
     const notch=audioCtx.createBiquadFilter(); notch.type='notch'; notch.frequency.value=2500; notch.Q.value=4;
     const lp=audioCtx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=1000; lp.Q.value=0.8;
+
+    // Sub + growl
     const sub=audioCtx.createOscillator(); sub.type='sine';
     sub.frequency.setValueAtTime(70,t0); sub.frequency.exponentialRampToValueAtTime(52,t0+0.55);
     const subG=audioCtx.createGain(); subG.gain.value=0.55*power;
+
     const growl=audioCtx.createOscillator(); growl.type='sawtooth';
     growl.frequency.setValueAtTime(140,t0); growl.frequency.exponentialRampToValueAtTime(90,t0+0.6);
     const growlG=audioCtx.createGain(); growlG.gain.value=0.18*power;
+
+    // Tiny room IR
     const irLen = (0.25*audioCtx.sampleRate)|0;
     const ir = audioCtx.createBuffer(2, irLen, audioCtx.sampleRate);
     for(let ch=0;ch<2;ch++){
@@ -852,14 +807,18 @@ async function roarSound(power=2){
     const convolver = audioCtx.createConvolver(); convolver.buffer = ir;
     const wetG = audioCtx.createGain(); wetG.gain.value = 0.32;
     const dryG = audioCtx.createGain(); dryG.gain.value = 0.7;
+
+    // Sub wobble
     const lfo=audioCtx.createOscillator(); lfo.type='triangle'; lfo.frequency.value=7;
     const lfoD=audioCtx.createGain(); lfoD.gain.value=0.25;
 
-    noise.connect(hp); hp.connect(shelf); shelf.connect(form1); form1.connect(form2); form2.connect(notch); notch.connect(lp);
+    // Mild waveshaper
     const shaper = audioCtx.createWaveShaper();
     const makeCurve = (k=48)=>{ const n=44100, c=new Float32Array(n), deg=Math.PI/180; for(let i=0;i<n;i++){ const x=i*2/n-1; c[i]=(3+k)*x*20*deg/(Math.PI+k*Math.abs(x)) } return c };
     shaper.curve = makeCurve(48);
 
+    // Wire chain
+    noise.connect(hp); hp.connect(shelf); shelf.connect(form1); form1.connect(form2); form2.connect(notch); notch.connect(lp);
     lp.connect(shaper);
     shaper.connect(env);
     sub.connect(subG); subG.connect(env);
@@ -884,7 +843,7 @@ async function roarSound(power=2){
   }catch{}
 }
 
-/* ---------- MAIN LOOP + MUSIC / UI / WALLET (same wiring) ---------- */
+/* ---------- MAIN LOOP + MUSIC ---------- */
 let last=0, rafId=null;
 function loop(ts){
   try{
@@ -906,10 +865,7 @@ function start(){
   overlay.style.display='none';
   startOverlay.style.display='none';
   pops.length=0; floats.length=0; confetti.length=0; comboFlame=0; scareDraw=null;
-
-  // 🔊 hard-reset bgm so it restarts each time
   try{ bgm.pause(); bgm.currentTime = 0; }catch{}
-
   game=newGame(); renderMission(); rankEl.textContent=game.rank; modeEl.textContent='x1'; drawHUD(game);
   playMusic();
   last=0; rafId=requestAnimationFrame(loop);
@@ -923,8 +879,11 @@ function endSummary(g){
   pauseMusic();
   gameOverSound();
   overlay.style.display='flex';
+  // auto save to local leaderboard and (optionally) global
+  try{ saveLocalScore(g.score) }catch{}
 }
 
+/* ---------- SHARE / FS ---------- */
 function shareNow(){
   const url=encodeURIComponent(location.href);
   const rank=game?game.rank:'Rookie';
@@ -939,8 +898,33 @@ async function toggleFullscreen(){
   }catch{}
 }
 
-/* ----- Wallet + Global LB (set API_URL when deployed) ----- */
-const API_URL = ""; // set to your backend base URL to enable global LB
+/* ----- Leaderboards ----- */
+/* Local leaderboard always works */
+const LOCAL_LB_KEY = 'pg_local_lb_v1';
+function getLocalLB(){ return safeLSGet(LOCAL_LB_KEY, []); }
+function saveLocalScore(score){
+  if(!Number.isFinite(score) || score<=0) return;
+  const name = (window.wallet ? window.wallet.slice(0,4)+'…'+window.wallet.slice(-4) : 'Local');
+  let lb = getLocalLB();
+  lb.push({name, best: Math.floor(score), ts: Date.now()});
+  lb.sort((a,b)=>b.best-a.best);
+  lb = lb.slice(0,10);
+  localStorage.setItem(LOCAL_LB_KEY, JSON.stringify(lb));
+  renderLocalBoard();
+}
+function renderLocalBoard(){
+  const lb = getLocalLB();
+  if(!lb || !lb.length){
+    if(!API_URL) globalStatus.textContent = "Local leaderboard (no backend set).";
+    globalBoard.innerHTML = "";
+    return;
+  }
+  if(!API_URL) globalStatus.textContent = "Local leaderboard:";
+  globalBoard.innerHTML = lb.map((x,i)=>`<li>#${i+1} ${x.name} — ${x.best}</li>`).join("");
+}
+
+/* Optional global (Phantom-signed) */
+const API_URL = ""; // ← set to your backend base URL to enable global board
 function phantomProvider(){
   const p=window.solana||window.phantom?.solana;
   if(p && (p.isPhantom||p.isBraveWallet||p.isSolflare||p.isBackpack)) return p;
@@ -999,25 +983,22 @@ async function submitGlobalScore(score){
 async function renderGlobalBoard(){
   try{
     if(!globalBoard||!globalStatus) return;
-    if(!API_URL){
-      globalStatus.textContent="No API configured for global leaderboard.";
-      globalBoard.innerHTML="";
-      return;
-    }
+    if(!API_URL){ renderLocalBoard(); return; }
     globalStatus.textContent="Loading…";
     const res=await fetch(API_URL+"/top").then(r=>r.json()).catch(()=>null);
     if(!res||!res.ok){
-      globalStatus.textContent="Unable to load global leaderboard";
-      globalBoard.innerHTML="";
+      globalStatus.textContent="Unable to load global leaderboard (showing local)";
+      renderLocalBoard();
       return;
     }
     globalStatus.textContent="";
     globalBoard.innerHTML=res.items.map((x,i)=>`<li>#${i+1} ${x.pubkey.slice(0,4)}…${x.pubkey.slice(-4)} — ${x.best}</li>`).join("");
   }catch{
-    if(globalStatus){ globalStatus.textContent="Unable to load global leaderboard" }
+    if(globalStatus){ globalStatus.textContent="Unable to load global leaderboard (showing local)" }
+    renderLocalBoard();
   }
 }
-// submit after game over
+// submit after game over (global)
 (function patchEndSummaryOnce(){
   if(window.__PG_PATCHED__) return;
   window.__PG_PATCHED__=true;
@@ -1040,6 +1021,7 @@ muteStart.onchange = ()=>{ muted=muteStart.checked; muteChk.checked=muted; if(mu
 muteChk.onchange = ()=>{ muted=muteChk.checked; muteStart.checked=muted; if(muted) pauseMusic(); else playMusic() };
 fsBtn.onclick = ()=>toggleFullscreen();
 connectBtn.onclick = ()=>ensureWalletConnected();
+submitScoreBtn.onclick = ()=>{ try{ if(game) submitGlobalScore(game.score) }catch{} };
 
 /* --- BOOT --- */
 function boot() {
@@ -1047,7 +1029,7 @@ function boot() {
   renderMission();
   startOverlay.style.display = 'flex';
   if (!rafId) rafId = requestAnimationFrame(loop);
-  renderGlobalBoard();
+  renderGlobalBoard(); // will fallback to local if API_URL not set
 }
 
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
@@ -1057,9 +1039,8 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
 }
 </script>
 
-<!-- put the helper below in its own script tag -->
+<!-- Diagnostics + Start guards -->
 <script>
-// --- TEMP DIAGNOSTICS + START GUARDS --- //
 window.addEventListener('error', e => console.error('PG error:', e?.message, e?.error));
 window.addEventListener('unhandledrejection', e => console.error('PG unhandled promise:', e?.reason));
 
